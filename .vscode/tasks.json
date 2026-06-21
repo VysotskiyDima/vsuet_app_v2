@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "start-redis-debug",
+      "type": "shell",
+      "command": "docker start vsuet_rating_v2-redis-DEBUG 2>/dev/null || docker run -d --name vsuet_rating_v2-redis-DEBUG -p 6379:6379 -v vsuet_rating_v2-redis-DEBUG-data:/data redis:7-alpine redis-server --save 60 1 --dbfilename dump.rdb --dir /data",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "stop-redis-debug",
+      "type": "shell",
+      "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>/dev/null || true",
+      "problemMatcher": []
+    }
+  ]
+}
