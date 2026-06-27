@@ -1,14 +1,3 @@
-"""Планируемый job парсинга (раз в 30 минут).
-
-Этапы:
-  1. Проверка доступности сайта — если недоступен, выйти до следующего запуска.
-  2. Очистить фоновую БД (мера предосторожности), собрать ссылки на ведомости по всем группам.
-  3. Конкурентно (под общим семафором) спарсить ведомости и записать каждую
-     запись в фоновую БД под ключом <zach_number>:<ved_type>:<subject_name>.
-  4. По успешному завершению — поменять активную и фоновую БД ролями.
-     При критической ошибке переключение не выполняется.
-"""
-
 import asyncio
 from datetime import datetime, timedelta
 import logging
@@ -19,6 +8,8 @@ from app.config import settings
 from app.logging_config import trace_ctx
 from app.repository.redis_repository import RedisRepository
 from app.services.parser_service import CONCURRENCY, ParserService
+
+from pydantic import BaseModel
 
 
 
@@ -33,9 +24,13 @@ _running = asyncio.Lock()
 
 
 
-def record_to_key(record: dict) -> str:
-    """Маппер «запись → ключ Redis»."""
-    return f"{record['zach_number']}:{record['ved_type']}:{record['subject_name']}"
+def record_to_key(record: BaseModel) -> str:
+    """Маппер «запись → ключ Redis».
+
+    ved_type — это Enum VedType; берём именно .value («Зачет»), т.к. в Python 3.12
+    f-строка от члена str-Enum даёт «VedType.ZACHET», а читатель ищет по .value.
+    """
+    return f"{record.zach_number}:{record.ved_type.value}:{record.subject_name}"
 
 
 async def run_parsing_cycle() -> None:
@@ -58,14 +53,14 @@ async def run_parsing_cycle() -> None:
         try:
             # Этап 1 — доступность сайта.
             stage = "Stage 1: Checking site availability"
-            logger.info("Stage 1: Checking site https://rating.vsuet.ru/web/ved/Default.aspx availability")
+            logger.info("Stage 1: Checking site %s availability", settings.rating_base_url)
             
             async with ParserService() as parser:
                 if not await parser.check_site_availability():
                     next_run = (datetime.now() + timedelta(minutes=settings.scheduler_interval_minutes)).strftime("%Y-%m-%d %H:%M:%S")
-                    logger.warning("Site https://rating.vsuet.ru/web/ved/Default.aspx is unavailable. Parsing cycle postponed until next run at %s", next_run)
+                    logger.warning("Site %s is unavailable. Parsing cycle postponed until next run at %s", settings.rating_base_url, next_run)
                     return
-                logger.info("Stage 1 success: site https://rating.vsuet.ru/web/ved/Default.aspx available")
+                logger.info("Stage 1 success: site %s available", settings.rating_base_url)
 
                 # Этап 2 — очистка фоновой БД и сбор ссылок.
                 stage = "Stage 2: Clearing background DB and collecting links"
@@ -96,25 +91,37 @@ async def run_parsing_cycle() -> None:
                 sem = asyncio.Semaphore(CONCURRENCY)
                 total_records = 0
                 parsed_veds = 0
-                skipped_veds = 0
+                empty_veds = 0   # нерабочие/пустые ведомости — штатный пропуск, не потеря
+                failed_veds = 0  # сетевая ошибка / 429 после ретраев — реальная потеря
+                completed_veds = 0
 
                 async def handle(url: str) -> None:
-                    nonlocal total_records, parsed_veds, skipped_veds
+                    nonlocal total_records, parsed_veds, empty_veds, failed_veds, completed_veds
                     async with sem:
                         records = await parser.parse_ved(url)
-                    if records:
+                    if records is None:
+                        failed_veds += 1
+                    elif records:
                         parsed_veds += 1
                         for record in records:
-                            await repo.set_record(background_db, record_to_key(record), record)
+                            await repo.set_record(background_db, record_to_key(record), record.model_dump())
                             total_records += 1
                     else:
-                        skipped_veds += 1
+                        empty_veds += 1
+
+                    completed_veds += 1
+                    if completed_veds % 250 == 0 or completed_veds == len(urls):
+                        logger.info(
+                            "Parsing progress: %d/%d vedomosts processed (%.1f%%) | records in DB: %d",
+                            completed_veds, len(urls), (completed_veds / len(urls) * 100), total_records
+                        )
 
                 t_parse = time.monotonic()
                 await asyncio.gather(*(handle(url) for url in urls))
+                loss_pct = (failed_veds / len(urls) * 100) if urls else 0.0
                 logger.info(
-                    "Stage 3 parse and save completed in %.1f s | parsed veds: %d | skipped veds: %d | total records in DB: %d",
-                    time.monotonic() - t_parse, parsed_veds, skipped_veds, total_records,
+                    "Stage 3 parse and save completed in %.1f s | parsed veds: %d | empty veds: %d | failed veds: %d (%.2f%% loss) | total records in DB: %d",
+                    time.monotonic() - t_parse, parsed_veds, empty_veds, failed_veds, loss_pct, total_records,
                 )
 
             # Этап 4 — переключение активной/фоновой БД.

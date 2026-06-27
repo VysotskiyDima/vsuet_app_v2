@@ -1,0 +1,512 @@
+/* ============================================================
+   ВГУИТ · Рейтинг успеваемости
+   Идентичность: официальный документ (зачётная книжка) —
+   тёплая «бумага», ультрамариновая печать-подпись, точные
+   измерительные таблицы. Дисплей — Unbounded (со сдержанностью),
+   текст — Golos Text, данные — JetBrains Mono.
+   ============================================================ */
+
+:root {
+  --paper:    #E9EAE3;  /* прохладная «бумага» фона */
+  --paper-2:  #F5F5EF;  /* карточки/таблицы */
+  --paper-3:  #FCFCF8;  /* зебра, верх таблицы */
+  --ink:      #181A17;  /* основной текст-чернила */
+  --ink-soft: #5E6157;  /* подписи, второстепенное */
+  --line:     #D4D5CB;  /* линовка */
+  --line-2:   #BFC1B5;  /* акцентная линовка */
+  --stamp:    #2E2BD6;  /* ультрамарин — подпись/печать/акцент */
+  --stamp-ink:#211FA8;  /* нажатие/hover акцента */
+
+  --good: #2E7D4F;  /* Отл / Зачтено */
+  --ok:   #5C7A2E;  /* Хор */
+  --mid:  #B0731A;  /* Удовл */
+  --bad:  #C03A2D;  /* Неуд / Не зачтено */
+
+  --font-display: 'Unbounded', system-ui, sans-serif;
+  --font-body: 'Golos Text', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+
+  --shadow: 0 1px 0 rgba(24,26,23,.04), 0 18px 40px -28px rgba(24,26,23,.45);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button { font-family: inherit; }
+
+::selection { background: var(--stamp); color: #fff; }
+
+:focus-visible {
+  outline: 2.5px solid var(--stamp);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------
+   Кнопки
+   --------------------------------------------------------------- */
+.btn {
+  appearance: none;
+  border: none;
+  background: var(--ink);
+  color: var(--paper-3);
+  font-weight: 600;
+  font-size: .95rem;
+  letter-spacing: .01em;
+  padding: 0 1.4rem;
+  height: 52px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background .18s ease, transform .12s ease, box-shadow .18s ease;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--stamp); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .55; cursor: progress; }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--line-2);
+  height: 40px;
+  padding: 0 1rem;
+  font-size: .85rem;
+}
+.btn--ghost:hover { background: transparent; border-color: var(--stamp); color: var(--stamp); }
+
+.linklike {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--stamp);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 1.5px dashed var(--stamp);
+}
+.linklike:hover { color: var(--stamp-ink); }
+
+/* ---------------------------------------------------------------
+   ВХОД — обложка зачётки
+   --------------------------------------------------------------- */
+.view--login {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(120% 90% at 85% -10%, rgba(46,43,214,.06), transparent 55%),
+    var(--paper);
+}
+
+.cover {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: clamp(2rem, 5vw, 3.5rem);
+  box-shadow: var(--shadow);
+  /* печатная рамка обложки */
+  outline: 1px solid var(--line);
+  outline-offset: -10px;
+  overflow: visible;
+  animation: rise .6s cubic-bezier(.2,.7,.2,1) both;
+}
+
+.cover__seal {
+  position: absolute;
+  top: -34px;
+  right: -22px;
+  width: clamp(116px, 26vw, 158px);
+  height: clamp(116px, 26vw, 158px);
+  color: var(--stamp);
+  opacity: .92;
+  transform: rotate(-9deg);
+  filter: drop-shadow(0 1px 0 rgba(46,43,214,.15));
+  pointer-events: none;
+  animation: stamp-in .7s cubic-bezier(.2,.8,.2,1) .15s both;
+}
+.seal-text { font-family: var(--font-mono); font-weight: 500; fill: var(--stamp); }
+.seal-text--top { font-size: 13.5px; letter-spacing: 1.5px; }
+.seal-text--bottom { font-size: 11px; letter-spacing: 2.5px; }
+
+.cover__eyebrow {
+  margin: 0 0 1.6rem;
+  max-width: 60%;
+  font-size: .74rem;
+  line-height: 1.4;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.cover__title {
+  margin: 0 0 .6rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 9vw, 4.2rem);
+  line-height: .92;
+  letter-spacing: -.02em;
+}
+
+.cover__sub {
+  margin: 0 0 2.2rem;
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+  max-width: 34ch;
+}
+
+/* поле ввода номера */
+.field { margin: 0; }
+.field__label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-soft);
+  margin-bottom: .55rem;
+}
+.field__row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  background: var(--paper-3);
+  border: 1.5px solid var(--line-2);
+  border-radius: var(--r-md);
+  padding: 6px 6px 6px 14px;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.field__row:focus-within {
+  border-color: var(--stamp);
+  box-shadow: 0 0 0 4px rgba(46,43,214,.12);
+}
+.field__hash {
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  color: var(--line-2);
+  font-weight: 700;
+}
+.field__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.6rem;
+  letter-spacing: .08em;
+  color: var(--ink);
+}
+.field__input::placeholder { color: var(--line-2); letter-spacing: .08em; }
+
+.field__error {
+  margin: .85rem 0 0;
+  color: var(--bad);
+  font-size: .9rem;
+  font-weight: 500;
+  display: flex;
+  gap: .5rem;
+  align-items: baseline;
+}
+.field__error::before { content: "▲"; font-size: .7em; }
+
+.cover__hint {
+  margin: 1.6rem 0 0;
+  font-size: .88rem;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------
+   РЕЙТИНГ — верхняя панель
+   --------------------------------------------------------------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 14px clamp(16px, 4vw, 40px);
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar__brand { display: flex; align-items: center; gap: .7rem; }
+.brand__seal { width: 30px; height: 30px; color: var(--stamp); flex: none; }
+.brand__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+}
+.brand__sep { color: var(--line-2); }
+.brand__sub { color: var(--ink-soft); font-weight: 600; font-size: .82rem; }
+
+.topbar__id {
+  margin-left: auto;
+  text-align: right;
+  line-height: 1.1;
+}
+.topbar__id-label {
+  display: block;
+  font-size: .64rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-soft);
+}
+.topbar__id-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* ---------------------------------------------------------------
+   Контент и секции
+   --------------------------------------------------------------- */
+.content {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 40px) 96px;
+}
+
+.section { margin-top: 56px; animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
+.section:first-child { margin-top: 8px; }
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  gap: .9rem;
+  padding-bottom: .8rem;
+  margin-bottom: 1.1rem;
+  border-bottom: 2px solid var(--ink);
+}
+.section__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.35rem, 3.4vw, 1.85rem);
+  letter-spacing: -.015em;
+}
+.section__count { font-size: .9rem; color: var(--ink-soft); font-weight: 500; }
+.section__tag {
+  margin-left: auto;
+  align-self: center;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  font-weight: 600;
+  color: var(--stamp);
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  padding: .2rem .7rem;
+}
+.section__tag--grade { color: var(--ink-soft); }
+
+/* обёртка для горизонтального скролла широких таблиц */
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper-2);
+  box-shadow: var(--shadow);
+  -webkit-overflow-scrolling: touch;
+}
+
+table { border-collapse: collapse; width: 100%; }
+
+/* ---------- Рейтинговая таблица (КТ) ---------- */
+.rt { font-variant-numeric: tabular-nums; min-width: 640px; }
+.rt th, .rt td {
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: .7rem .55rem;
+  text-align: center;
+}
+.rt th:first-child, .rt td:first-child { border-left: none; }
+.rt tr > :last-child { border-right: none; }
+
+.rt thead th {
+  background: var(--paper-3);
+  font-weight: 600;
+  font-size: .76rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.rt thead .kt-group {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: .82rem;
+  color: var(--ink);
+  letter-spacing: .04em;
+  background: color-mix(in srgb, var(--stamp) 7%, var(--paper-3));
+  border-bottom: 1px solid var(--line-2);
+}
+.kt-group__w {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: .62rem;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: var(--stamp-ink);
+}
+.rt thead .kt-result,
+.rt thead .rt-final {
+  vertical-align: middle;
+  color: var(--ink);
+}
+.rt thead .rt-final { background: color-mix(in srgb, var(--stamp) 12%, var(--paper-3)); color: var(--stamp-ink); }
+
+.rt .rt-subject {
+  text-align: left;
+  font-weight: 500;
+  background: var(--paper-2);
+  min-width: 150px;
+  /* при горизонтальном скролле широких КТ-таблиц держим название предмета на виду */
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--line-2);
+}
+.rt thead .rt-subject { z-index: 3; }
+.rt tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--paper-3) 60%, transparent); }
+.rt tbody tr:nth-child(even) .rt-subject { background: color-mix(in srgb, var(--paper-3) 60%, var(--paper-2)); }
+.rt tbody tr:hover td { background: color-mix(in srgb, var(--stamp) 5%, var(--paper-3)); }
+
+.rt-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.rt-cell__v { font-family: var(--font-mono); font-weight: 500; font-size: .98rem; }
+.rt-cell__w { font-size: .62rem; color: var(--ink-soft); margin-top: 2px; letter-spacing: .02em; }
+.rt-cell.is-empty .rt-cell__v { color: var(--line-2); }
+
+.rt-total { font-family: var(--font-mono); font-weight: 700; background: color-mix(in srgb, var(--stamp) 4%, transparent); }
+.rt-rating {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--stamp-ink);
+  background: color-mix(in srgb, var(--stamp) 9%, transparent) !important;
+}
+
+.rt-caption {
+  margin: .7rem 2px 0;
+  font-size: .78rem;
+  color: var(--ink-soft);
+}
+
+/* ---------- Оценочная таблица ---------- */
+.gt { min-width: 380px; }
+.gt th, .gt td { padding: .85rem 1.1rem; border-bottom: 1px solid var(--line); text-align: left; }
+.gt thead th {
+  background: var(--paper-3);
+  font-weight: 600;
+  font-size: .76rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.gt thead th:last-child, .gt td:last-child { text-align: right; width: 1%; white-space: nowrap; }
+.gt tbody tr:last-child td { border-bottom: none; }
+.gt tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--paper-3) 55%, transparent); }
+.gt tbody tr:hover td { background: color-mix(in srgb, var(--stamp) 5%, var(--paper-3)); }
+.gt-subject { font-weight: 500; }
+
+.chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: .82rem;
+  letter-spacing: .02em;
+  padding: .32rem .8rem;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+}
+.chip.is-good { color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); }
+.chip.is-ok   { color: var(--ok);   background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.chip.is-mid  { color: var(--mid);  background: color-mix(in srgb, var(--mid) 12%, transparent); }
+.chip.is-bad  { color: var(--bad);  background: color-mix(in srgb, var(--bad) 10%, transparent); }
+.chip.is-none { color: var(--line-2); background: transparent; }
+
+/* ---------------------------------------------------------------
+   Состояния: загрузка, пусто, ошибка, баннер
+   --------------------------------------------------------------- */
+.state {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: clamp(56px, 16vh, 140px) 16px;
+  gap: 1rem;
+}
+.state__seal { width: 64px; height: 64px; color: var(--stamp); }
+.loading .state__seal { animation: spin 1.4s linear infinite; }
+.state__title { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; margin: 0; }
+.state__text { margin: 0; color: var(--ink-soft); max-width: 42ch; }
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding: .85rem 1.1rem;
+  background: color-mix(in srgb, var(--mid) 9%, var(--paper-2));
+  border: 1px solid color-mix(in srgb, var(--mid) 40%, var(--line));
+  border-radius: var(--r-md);
+  font-size: .9rem;
+}
+.banner__retry { margin-left: auto; }
+
+/* ---------------------------------------------------------------
+   Анимации
+   --------------------------------------------------------------- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes stamp-in { 0% { opacity: 0; transform: rotate(-26deg) scale(1.4); } 100% { opacity: .92; transform: rotate(-9deg) scale(1); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.view--rating:not([hidden]) { animation: fade .35s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------------------------------------------------------------
+   Адаптив
+   --------------------------------------------------------------- */
+@media (max-width: 560px) {
+  .cover__eyebrow { max-width: 78%; }
+  .cover__seal { top: -26px; right: -10px; }
+  .field__row { flex-wrap: wrap; }
+  .btn { flex: 1; }
+  .topbar__id-label { display: none; }
+}

@@ -11,6 +11,7 @@
 
 import asyncio
 import logging
+import random
 import re
 
 import httpx
@@ -27,19 +28,33 @@ logger = logging.getLogger(__name__)
 
 
 
-BASE_URL = "https://rating.vsuet.ru/web/ved/Default.aspx"
-VED_URL = "https://rating.vsuet.ru/web/ved/Ved.aspx"
-
-TIMEOUT = 30
-CONCURRENCY = 18      # одновременных запросов — главный рычаг скорости, не повышать
-RETRIES = 3
-RETRY_BACKOFF = 2
+# Единый таймаут 30 с на connect/read/write/pool. Слабый сервер ВГУИТ медленно
+# ПРИНИМАЕТ соединения при конкурентном всплеске (очередь SYN), поэтому занижать
+# connect нельзя: проверено, connect=10 c валил Этап 2 штормом ConnectTimeout.
+TIMEOUT = httpx.Timeout(30.0)
+# Главный рычаг нагрузки на слабый сервер ВГУИТ. 18 перегружало его worker-пул
+# на тяжёлых Ved.aspx и давало шторм ReadTimeout — снижено до 12 (повышать нельзя).
+CONCURRENCY = 12
+RETRIES = 4           # запас попыток, чтобы потери ведомостей держались < 1%
+RETRY_BACKOFF = 2     # база экспоненциального бэкоффа (с)
+RETRY_MAX_DELAY = 20  # потолок задержки между попытками (с)
 
 LIMITS = httpx.Limits(max_connections=CONCURRENCY, max_keepalive_connections=CONCURRENCY)
-HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": BASE_URL}
+HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": settings.rating_base_url}
 
 _FAC_SELECT = "ctl00$ContentPage$cmbFacultets"
 _GROUP_SELECT = "ctl00$ContentPage$cmbGroups"
+
+
+def _backoff_delay(attempt: int) -> float:
+    """Экспоненциальный бэкофф с полным джиттером.
+
+    Запросы, упавшие по таймауту одной волной (слабый сервер отдаёт их пачкой),
+    без джиттера ретраятся синхронно и снова перегружают сервер. Случайная
+    задержка из [0, base] размазывает повторы во времени.
+    """
+    base = min(RETRY_BACKOFF * (2 ** (attempt - 1)), RETRY_MAX_DELAY)
+    return random.uniform(0, base)
 
 
 
@@ -75,7 +90,7 @@ def _parse_urls(html: str) -> list[str]:
     for a in table.find_all("a", href=True):
         m = re.search(r"id=(\d+)", a["href"])
         if m:
-            urls.append(f"{VED_URL}?id={m.group(1)}")
+            urls.append(f"{settings.rating_ved_url}?id={m.group(1)}")
     return urls
 
 
@@ -87,8 +102,11 @@ class ParserService:
         self._sem = asyncio.Semaphore(CONCURRENCY)
 
     async def __aenter__(self) -> "ParserService":
-        self._client = httpx.AsyncClient(headers=HEADERS, follow_redirects=True, limits=LIMITS)
-        logger.debug("HTTP client opened  |  concurrency=%d  timeout=%ds  retries=%d", CONCURRENCY, TIMEOUT, RETRIES)
+        self._client = httpx.AsyncClient(headers=HEADERS, follow_redirects=True, limits=LIMITS, timeout=TIMEOUT)
+        logger.debug(
+            "HTTP client opened  |  concurrency=%d  connect=%.0fs  read=%.0fs  retries=%d",
+            CONCURRENCY, TIMEOUT.connect, TIMEOUT.read, RETRIES,
+        )
         return self
 
     async def __aexit__(self, *exc) -> None:
@@ -110,22 +128,25 @@ class ParserService:
                 r = await self.client.request(method, url, **kwargs)
             except httpx.HTTPError as exc:
                 if attempt == RETRIES:
-                    logger.error("Request %s %s failed after %d attempts: %s", method, url, RETRIES, exc)
+                    logger.error("Request %s %s failed after %d attempts: %r", method, url, RETRIES, exc)
                     raise
+                delay = _backoff_delay(attempt)
                 logger.warning(
-                    "%s %s  attempt %d/%d  error: %s", method, url, attempt, RETRIES, exc
+                    "%s %s  attempt %d/%d  error: %r  retry in %.1fs",
+                    method, url, attempt, RETRIES, exc, delay,
                 )
-                await asyncio.sleep(RETRY_BACKOFF * attempt)
+                await asyncio.sleep(delay)
                 continue
 
             if r.status_code == 429:
                 if attempt == RETRIES:
                     logger.warning("429 %s — retry limit exceeded", url)
                     return r
+                retry_after = r.headers.get("Retry-After")
                 try:
-                    delay = float(r.headers.get("Retry-After", RETRY_BACKOFF * attempt))
+                    delay = float(retry_after) if retry_after is not None else _backoff_delay(attempt)
                 except ValueError:
-                    delay = RETRY_BACKOFF * attempt
+                    delay = _backoff_delay(attempt)
                 logger.warning(
                     "429 %s  attempt %d/%d  delay %.1fs", url, attempt, RETRIES, delay
                 )
@@ -136,7 +157,7 @@ class ParserService:
         raise RuntimeError("unreachable")
 
     async def _post(self, data: dict) -> str:
-        r = await self._request("POST", BASE_URL, data=data)
+        r = await self._request("POST", settings.rating_base_url, data=data)
         r.encoding = "windows-1251"
         return r.text
 
@@ -145,7 +166,7 @@ class ParserService:
     async def check_site_availability(self) -> bool:
         """True, если сайт отвечает HTTP 200."""
         try:
-            r = await self._request("GET", BASE_URL)
+            r = await self._request("GET", settings.rating_base_url)
         except httpx.HTTPError:
             logger.warning("Site is unavailable (network error)")
             return False
@@ -207,7 +228,7 @@ class ParserService:
 
         Возвращает {название_группы: [url1, url2, ...]}.
         """
-        r = await self._request("GET", BASE_URL)
+        r = await self._request("GET", settings.rating_base_url)
         r.encoding = "windows-1251"
         base_fields = _parse_viewstate(r.text)
         faculties = _parse_select(r.text, _FAC_SELECT)
@@ -229,18 +250,25 @@ class ParserService:
         return result
 
 
-    async def parse_ved(self, url: str) -> list[dict]:
+    async def parse_ved(self, url: str) -> list[dict] | None:
         """Скачивает и парсит одну ведомость в записи целевого формата.
 
-        Нерабочие ведомости (HTTP != 200 или нет ucVedBox_lblTypeVed) дают
-        пустой список и не прерывают цикл.
+        Различаем два исхода с пустым результатом:
+          * None  — ведомость **потеряна** (сетевая ошибка или 429 после всех
+            ретраев); это и есть реальная потеря для метрики.
+          * []    — ведомость нерабочая/пустая (HTTP != 200, нет маркера типа
+            или в ней нет записей); это штатный пропуск, не потеря.
         """
         try:
             r = await self._request("GET", url)
         except httpx.HTTPError as exc:
-            logger.warning("Failed to download vedomost %s: %s", url, exc)
-            return []
-        # Ранний признак нерабочей ведомости — статус 500 (и любой не-200).
+            logger.warning("Failed to download vedomost %s: %r", url, exc)
+            return None
+        # 429 после исчерпания ретраев — реальная потеря.
+        if r.status_code == 429:
+            logger.warning("Vedomost lost after retries (HTTP 429): %s", url)
+            return None
+        # Ранний признак нерабочей ведомости — статус 500 (и любой иной не-200).
         if r.status_code != 200:
             logger.debug("Non-functional vedomost (HTTP %d): %s", r.status_code, url)
             return []

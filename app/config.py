@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # Период парсинга. Меняется вручную раз в полгода при смене семестра.
-    parsing_year: str = "2025-2026"
-    parsing_semester: str = "0"  # 0 — весна, 1 — осень
+    parsing_year: str
+    parsing_semester: str
 
     # Redis. Две логические БД под данные (активная/фоновая меняются ролями)
     # и отдельная служебная БД под указатель активной БД.
@@ -20,6 +20,10 @@ class Settings(BaseSettings):
 
     # Интервал запуска планировщика парсинга, минуты.
     scheduler_interval_minutes: int = 30
+
+    # URL-ы сайта рейтинга ВГУИТ.
+    rating_base_url: str = "https://rating.vsuet.ru/web/ved/Default.aspx"
+    rating_ved_url: str = "https://rating.vsuet.ru/web/ved/Ved.aspx"
 
     # Уровень логирования (DEBUG / DEV).
     log_level: str = "DEV"

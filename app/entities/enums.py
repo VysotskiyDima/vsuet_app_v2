@@ -1,4 +1,7 @@
 from enum import Enum
+from typing import Annotated
+
+from pydantic import Field
 
 
 class VedType(str, Enum):
@@ -18,30 +21,9 @@ class VedType(str, Enum):
     PRAKTIKA = "Практика"
 
 
-# Типы с рейтинговой (100-балльной) таблицей по контрольным точкам.
-RATING_VED_TYPES = {VedType.ZACHET, VedType.EKZAMEN}
+RATING_VED_TYPES: frozenset[VedType] = frozenset({
+    VedType.ZACHET,
+    VedType.EKZAMEN,
+})
 
-
-# Маппинг «человекочитаемый сегмент URL → точное значение ved_type».
-# Латиница используется только в путях; в ключах Redis тип остаётся на русском.
-URL_SEGMENT_TO_VED_TYPE: dict[str, VedType] = {
-    "zachet": VedType.ZACHET,
-    "ekzamen": VedType.EKZAMEN,
-    "vypusknaya-rabota": VedType.VYPUSKNAYA_RABOTA,
-    "gosekzamen": VedType.GOSEKZAMEN,
-    "kontrolnaya-rabota": VedType.KONTROLNAYA_RABOTA,
-    "kursovaya-rabota": VedType.KURSOVAYA_RABOTA,
-    "kursovoy-proekt": VedType.KURSOVOY_PROEKT,
-    "praktika": VedType.PRAKTIKA,
-}
-
-
-class Grade(str, Enum):
-    """Сокращённые оценки, как приходят с сайта."""
-
-    OTLICHNO = "Отл"
-    HOROSHO = "Хор"
-    UDOVLETVORITELNO = "Удовл"
-    NEUDOVLETVORITELNO = "Неуд"
-    ZACHTENO = "Зачтено"
-    NE_ZACHTENO = "Не зачтено"
+NOT_RATING_VED_TYPES: frozenset[VedType] = frozenset(VedType) - RATING_VED_TYPES

@@ -8,13 +8,16 @@ from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.logging_config import setup_logging, trace_ctx
 from app.repository.redis_repository import RedisRepository
-from app.routers import students
+from app.routers import rating_router, students_router
 from app.scheduler.jobs import run_parsing_cycle
+from app.services.rating_service import RatingService
+from app.services.student_service import StudentService
 
 
 
@@ -88,6 +91,8 @@ async def lifespan(app: FastAPI):
     logger.info("Swagger UI documentation is available at: http://localhost:8000/docs")
 
     app.state.repo = RedisRepository()
+    app.state.rating_service = RatingService(app.state.repo)
+    app.state.student_service = StudentService(app.state.repo)
 
     # Проверяем состояние базы данных на старте
     active_db = await app.state.repo.get_active_db()
@@ -132,6 +137,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="VSUET Rating Backend", lifespan=lifespan)
+# CORS для локального фронтенда (Vite/CRA/иные dev-серверы на localhost).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(TracingMiddleware)
-app.include_router(students.router)
+app.include_router(students_router.router)
+app.include_router(rating_router.router)
 

@@ -13,7 +13,9 @@ import re
 
 from bs4 import BeautifulSoup
 
-from app.entities.enums import RATING_VED_TYPES, VedType
+from app.entities.enums import RATING_VED_TYPES
+from app.entities.not_rating_ved_model import NotRatingVedModel
+from app.entities.rating_ved_model import ControlPoint, RatingVedModel, SubjectScore
 
 
 
@@ -23,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 
-MISSING = "-"
 
 _PCT_RE = re.compile(r"^\d+%$")
 _INT_RE = re.compile(r"^-?\d+$")
@@ -43,14 +44,14 @@ def _cell(tds: list, idx: int) -> str:
         text = tds[idx].get_text(strip=True)
         if text:
             return text
-    return MISSING
+    return "-"
 
 
-def _score(tds: list, idx: int):
+def _score(tds: list, idx: int) -> str | int:
     """Балл из ячейки: int, если число, иначе исходный текст либо "-"."""
     text = _cell(tds, idx)
-    if text == MISSING:
-        return MISSING
+    if text == "-":
+        return "-"
     if _INT_RE.match(text):
         return int(text)
     return text
@@ -74,7 +75,7 @@ def _pct_cells(row) -> list[int]:
 
 def _at(values: list[int], idx: int):
     """Безопасное извлечение значения из списка по индексу. Если индекс выходит за пределы, возвращает заглушку '-'."""
-    return values[idx] if idx < len(values) else MISSING
+    return values[idx] if idx < len(values) else "-"
 
 
 def _parse_header_weights(table) -> tuple[int, list[int], list[int]]:
@@ -111,40 +112,40 @@ def _parse_header_weights(table) -> tuple[int, list[int], list[int]]:
     return num_kt, kt_weights, work_weights
 
 
-def _parse_rating(table, rows: list, ved_type: str, subject_name: str) -> list[dict]:
+def _parse_rating(table, rows: list, ved_type: str, subject_name: str) -> list[RatingVedModel]:
     """Разбирает строки студентов в таблице рейтингового формата (с разбивкой по КТ и видам работ) и формирует список записей."""
-    num_kt, _kt_weights, work_weights = _parse_header_weights(table)
+    num_kt, _, work_weights = _parse_header_weights(table)
 
-    records = []
+    records: list[RatingVedModel] = []
     for row in rows:
         tds = row.find_all("td")
         if not tds:
             continue
 
-        control_points = []
+        control_points: list[ControlPoint] = []
         for i in range(num_kt):
             base = _KT_FIRST_COL + i * 5
             w = i * 4
             control_points.append(
-                {
-                    "kt": i + 1,
-                    "lecture": {"score": _score(tds, base), "weight": _at(work_weights, w)},
-                    "practice": {"score": _score(tds, base + 1), "weight": _at(work_weights, w + 1)},
-                    "lab": {"score": _score(tds, base + 2), "weight": _at(work_weights, w + 2)},
-                    "other": {"score": _score(tds, base + 3), "weight": _at(work_weights, w + 3)},
-                    "total": _score(tds, base + 4),
-                }
+                ControlPoint(
+                    kt_num=i + 1,
+                    lecture=SubjectScore(score=_score(tds, base), weight=_at(work_weights, w)),
+                    practice=SubjectScore(score=_score(tds, base + 1), weight=_at(work_weights, w + 1)),
+                    lab=SubjectScore(score=_score(tds, base + 2), weight=_at(work_weights, w + 2)),
+                    other=SubjectScore(score=_score(tds, base + 3), weight=_at(work_weights, w + 3)),
+                    total=_score(tds, base + 4),
+                )
             )
 
         final_idx = _KT_FIRST_COL + num_kt * 5 + 1  # пропускаем колонку «Надбавка %»
         records.append(
-            {
-                "zach_number": _cell(tds, _ZACH_COL),
-                "subject_name": subject_name,
-                "ved_type": ved_type,
-                "control_points": control_points,
-                "final_rating": _score(tds, final_idx),
-            }
+            RatingVedModel(
+                zach_number=_cell(tds, _ZACH_COL),
+                subject_name=subject_name,
+                ved_type=ved_type,
+                control_points=control_points,
+                final_rating=_score(tds, final_idx),
+            )
         )
     return records
 
@@ -153,30 +154,30 @@ def _extract_grade(tds: list) -> str:
     """Оценка студента: приоритет — поздняя пересдача, затем основная оценка."""
     for idx in _RETAKE_COLS:
         value = _cell(tds, idx)
-        if value != MISSING:
+        if value != "-":
             return value
     return _cell(tds, _GRADE_COL)
 
 
-def _parse_grade(rows: list, ved_type: str, subject_name: str) -> list[dict]:
+def _parse_grade(rows: list, ved_type: str, subject_name: str) -> list[NotRatingVedModel]:
     """Разбирает строки студентов в таблице оценочного формата (где возвращается только одна финальная оценка) и формирует список записей."""
-    records = []
+    records: list[NotRatingVedModel] = []
     for row in rows:
         tds = row.find_all("td")
         if not tds:
             continue
         records.append(
-            {
-                "zach_number": _cell(tds, _ZACH_COL),
-                "subject_name": subject_name,
-                "ved_type": ved_type,
-                "grade": _extract_grade(tds),
-            }
+            NotRatingVedModel(
+                zach_number=_cell(tds, _ZACH_COL),
+                subject_name=subject_name,
+                ved_type=ved_type,
+                grade=_extract_grade(tds),
+            )
         )
     return records
 
 
-def parse_ved_html(html: str) -> list[dict]:
+def parse_ved_html(html: str) -> list[RatingVedModel] | list[NotRatingVedModel]:
     """Разбирает HTML ведомости в список записей целевого формата.
 
     Возвращает пустой список для нерабочей ведомости (нет/пустой
@@ -191,13 +192,13 @@ def parse_ved_html(html: str) -> list[dict]:
 
     ved_type = type_tag.get_text(strip=True)
     dis_tag = soup.find("span", id="ucVedBox_lblDis")
-    subject_name = dis_tag.get_text(strip=True) if dis_tag and dis_tag.get_text(strip=True) else MISSING
+    subject_name = dis_tag.get_text(strip=True) if dis_tag and dis_tag.get_text(strip=True) else "-"
 
     rows = soup.find_all("tr", class_=["VedRow1", "VedRow2"])
     table = soup.find("table", id="ucVedBox_tblVed")
 
     has_kt = soup.find("input", id="ucVedBox_chkShowKT") is not None
-    is_rating = any(ved_type == t.value for t in RATING_VED_TYPES) and has_kt and table is not None
+    is_rating =ved_type in RATING_VED_TYPES and has_kt and table is not None
 
     fmt = "reitingoviy" if is_rating else "otsenochniy"
     logger.debug(

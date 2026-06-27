@@ -12,6 +12,25 @@
       }
     },
     {
+      "label": "clear-redis-debug",
+      "type": "shell",
+      "command": "docker exec vsuet_rating_v2-redis-DEBUG sh -c \"until redis-cli ping | grep -q PONG; do sleep 0.1; done && redis-cli flushall\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "start-redis-debug-clear",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "start-redis-debug",
+        "clear-redis-debug"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "stop-redis-debug",
       "type": "shell",
       "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>/dev/null || true",

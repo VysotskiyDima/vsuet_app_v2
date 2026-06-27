@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Зачётная книжка · Рейтинг успеваемости ВГУИТ</title>
+  <meta name="description" content="Рейтинг успеваемости студентов ВГУИТ по номеру зачётной книжки." />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='92' fill='none' stroke='%232E2BD6' stroke-width='8'/%3E%3Ccircle cx='100' cy='100' r='74' fill='none' stroke='%232E2BD6' stroke-width='4'/%3E%3Cpath d='M100 60 L112 88 L140 100 L112 112 L100 140 L88 112 L60 100 L88 88 Z' fill='%232E2BD6'/%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Reusable mini stamp (rings + compass star), no text -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="seal-mini" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="7" />
+      <circle cx="100" cy="100" r="74" fill="none" stroke="currentColor" stroke-width="3" />
+      <path d="M100 56 L113 87 L144 100 L113 113 L100 144 L87 113 L56 100 L87 87 Z" fill="currentColor" />
+    </symbol>
+  </svg>
+
+  <!-- ===================== ВХОД (обложка зачётки) ===================== -->
+  <main id="view-login" class="view view--login">
+    <section class="cover" aria-labelledby="cover-title">
+
+      <p class="cover__eyebrow">Воронежский государственный университет инженерных технологий</p>
+      <h1 id="cover-title" class="cover__title">Зачётная<br />книжка</h1>
+      <p class="cover__sub">Откройте рейтинг успеваемости по номеру зачётной книжки.</p>
+
+      <form id="login-form" class="field" novalidate>
+        <label class="field__label" for="zach">Номер зачётной книжки</label>
+        <div class="field__row">
+          <span class="field__hash" aria-hidden="true">№</span>
+          <input
+            id="zach"
+            class="field__input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="247162"
+            aria-describedby="login-error"
+          />
+          <button id="login-btn" class="btn" type="submit">Открыть</button>
+        </div>
+        <p id="login-error" class="field__error" role="alert" hidden></p>
+      </form>
+
+      <p class="cover__hint">Для примера: <button type="button" class="linklike" id="demo-fill">247162</button></p>
+    </section>
+  </main>
+
+  <!-- ===================== РЕЙТИНГ ===================== -->
+  <div id="view-rating" class="view view--rating" hidden>
+    <header class="topbar">
+      <div class="topbar__brand">
+        <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
+        <span class="brand__name">ВГУИТ<span class="brand__sep">·</span><span class="brand__sub">Рейтинг</span></span>
+      </div>
+      <div class="topbar__id">
+        <span class="topbar__id-label">Зачётная книжка</span>
+        <span class="topbar__id-num">№&nbsp;<span id="current-zach">—</span></span>
+      </div>
+      <button id="logout-btn" class="btn btn--ghost" type="button">Закрыть</button>
+    </header>
+
+    <main id="rating-content" class="content" aria-live="polite"></main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

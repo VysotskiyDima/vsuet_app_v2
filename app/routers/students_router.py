@@ -1,0 +1,25 @@
+from fastapi import APIRouter, Depends, Path
+
+from app.entities.student_exists_model import StudentExistsModel
+from app.services.student_service import StudentService, get_student_service
+
+
+router = APIRouter(prefix="/students", tags=["students"])
+
+
+@router.get("/{zach_number}/exists")
+async def exists(
+    zach_number: str = Path(
+        ...,
+        openapi_examples={
+            "default": {
+                "summary": "Sample gradebook",
+                "value": "247162",
+            }
+        },
+    ),
+    student_service: StudentService = Depends(get_student_service),
+) -> StudentExistsModel:
+    result = await student_service.exists(zach_number)
+    return result
+
