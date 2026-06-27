@@ -18,5 +18,16 @@ services:
     depends_on:
       - redis
 
+  nginx:
+    image: nginx:alpine
+    container_name: vsuet_rating_v2-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./front:/usr/share/nginx/html
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+
 volumes:
   redis-dev-data:

@@ -1,14 +1,11 @@
 /* ============================================================
-   ВГУИТ · Рейтинг успеваемости — клиентская логика (без зависимостей)
+   Рейтинг успеваемости — клиентская логика (без зависимостей)
    ============================================================ */
 
 "use strict";
 
-// База API. CORS на бэкенде разрешает любой localhost-порт.
-const API_BASE = "http://localhost:8000";
+const API_BASE = "";
 
-// Типы ведомостей в порядке отображения. kind — подсказка;
-// фактический вид таблицы определяется по форме записи.
 const VED_TYPES = [
   { segment: "zachet",            title: "Зачёт",              kind: "rating" },
   { segment: "ekzamen",           title: "Экзамен",            kind: "rating" },
@@ -20,20 +17,20 @@ const VED_TYPES = [
   { segment: "praktika",          title: "Практика",           kind: "grade"  },
 ];
 
-const WORK_LABELS = { lecture: "Лекции", practice: "Практика", lab: "Лаб.", other: "Другое" };
+const WORK_LABELS = { lecture: "Лекции", practice: "Практика", lab: "Лаб. работы", other: "Другое" };
 const DASH = "—";
 
 // ---- элементы ----
 const $ = (sel, root = document) => root.querySelector(sel);
-const viewLogin   = $("#view-login");
-const viewRating  = $("#view-rating");
-const loginForm   = $("#login-form");
-const zachInput   = $("#zach");
-const loginBtn    = $("#login-btn");
-const loginError  = $("#login-error");
-const demoFill    = $("#demo-fill");
-const currentZach = $("#current-zach");
-const logoutBtn   = $("#logout-btn");
+const viewLogin     = $("#view-login");
+const viewRating    = $("#view-rating");
+const loginForm     = $("#login-form");
+const zachInput     = $("#zach");
+const loginBtn      = $("#login-btn");
+const loginError    = $("#login-error");
+const demoFill      = $("#demo-fill");
+const currentZach   = $("#current-zach");
+const logoutBtn     = $("#logout-btn");
 const ratingContent = $("#rating-content");
 
 // ============================================================
@@ -45,7 +42,6 @@ function escapeHtml(value) {
   );
 }
 
-// Русская плюрализация: forms = [1, 2-4, 5+]
 function plural(n, forms) {
   const n10 = n % 10, n100 = n % 100;
   if (n10 === 1 && n100 !== 11) return forms[0];
@@ -54,9 +50,11 @@ function plural(n, forms) {
 }
 const disciplines = (n) => `${n} ${plural(n, ["дисциплина", "дисциплины", "дисциплин"])}`;
 
-// Значение балла: число → как есть, "-"/пусто → длинное тире.
 function isBlank(v) {
   return v === null || v === undefined || v === "-" || v === "";
+}
+function isZeroWeight(v) {
+  return v === 0 || v === "0" || v === 0.0;
 }
 function showNum(v) {
   return isBlank(v) ? DASH : escapeHtml(v);
@@ -65,12 +63,12 @@ function showNum(v) {
 function gradeClass(grade) {
   switch (String(grade).trim()) {
     case "Отл":
-    case "Зачтено": return "is-good";
-    case "Хор": return "is-ok";
-    case "Удовл": return "is-mid";
+    case "Зачтено":    return "is-good";
+    case "Хор":        return "is-ok";
+    case "Удовл":      return "is-mid";
     case "Неуд":
     case "Не зачтено": return "is-bad";
-    default: return "is-none";
+    default:           return "is-none";
   }
 }
 
@@ -78,7 +76,6 @@ function isRatingRecord(rec) {
   return rec && Array.isArray(rec.control_points);
 }
 
-// Мини-печать для состояний (загрузка/пусто/ошибка).
 const sealSvg = '<svg class="state__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini"/></svg>';
 
 // ============================================================
@@ -128,20 +125,19 @@ loginForm.addEventListener("submit", async (e) => {
       setLoginError(`Зачётная книжка № ${zach} не найдена. Проверьте номер.`);
     }
   } catch (err) {
-    setLoginError("Не удалось связаться с сервером. Проверьте, что бэкенд запущен на localhost:8000.");
+    setLoginError("Не удалось связаться с сервером. Проверьте соединение.");
   } finally {
     setLoginLoading(false);
   }
 });
 
-// разрешаем вводить только цифры
 zachInput.addEventListener("input", () => {
   const cleaned = zachInput.value.replace(/\D/g, "");
   if (cleaned !== zachInput.value) zachInput.value = cleaned;
   if (!loginError.hidden) setLoginError("");
 });
 
-demoFill.addEventListener("click", () => {
+if (demoFill) demoFill.addEventListener("click", () => {
   zachInput.value = "247162";
   zachInput.focus();
 });
@@ -151,10 +147,10 @@ logoutBtn.addEventListener("click", closeRating);
 // ============================================================
 // Переключение экранов
 // ============================================================
-const LAST_ZACH_KEY = "vsuet:lastZach";
+const LAST_ZACH_KEY = "rating:lastZach";
 
 function rememberZach(zach) {
-  try { localStorage.setItem(LAST_ZACH_KEY, zach); } catch (_) { /* приватный режим */ }
+  try { localStorage.setItem(LAST_ZACH_KEY, zach); } catch (_) {}
 }
 
 function openRating(zach) {
@@ -207,19 +203,16 @@ async function loadRating(zach) {
     }
   });
 
-  // всё упало — общая ошибка
   if (failed === VED_TYPES.length) {
     renderState("error", "Не удалось загрузить данные", "Сервер недоступен или вернул ошибку.", () => loadRating(zach));
     return;
   }
 
-  // ничего не нашли
   if (sections.length === 0) {
     renderState("empty", "Ведомостей пока нет", `По зачётной книжке № ${zach} данные об успеваемости отсутствуют.`);
     return;
   }
 
-  // частичный успех — рисуем что есть
   let html = "";
   if (failed > 0) {
     html += `
@@ -254,38 +247,40 @@ function renderSection(section, index) {
     </section>`;
 }
 
-// ---- рейтинговая таблица (контрольные точки) ----
+// ---- рейтинговая таблица (компактная: только КТ + рейтинг) ----
 function renderRatingTable(records) {
   const maxKt = records.reduce((m, r) => Math.max(m, (r.control_points || []).length), 0);
-  const works = ["lecture", "practice", "lab", "other"];
-  // вес каждой КТ в итоговом рейтинге одинаков: 100% / число КТ (при 5 точках — 20%)
   const ktWeight = maxKt ? Math.round(100 / maxKt) : 0;
 
-  // шапка: 2 уровня
-  let head1 = '<tr><th class="rt-subject" rowspan="2">Дисциплина</th>';
-  let head2 = "<tr>";
+  let head = '<tr><th class="rt-subject">Дисциплина</th>';
   for (let k = 1; k <= maxKt; k++) {
-    head1 += `<th class="kt-group" colspan="${works.length}">КТ ${k}<span class="kt-group__w">вес ${ktWeight}%</span></th>`;
-    head1 += `<th class="kt-result" rowspan="2">Итог<br>КТ ${k}</th>`;
-    head2 += works.map((w) => `<th>${WORK_LABELS[w]}</th>`).join("");
+    head += `<th class="kt-result">КТ ${k}<span class="kt-group__w">вес ${ktWeight}%</span></th>`;
   }
-  head1 += '<th class="rt-final" rowspan="2">Рейтинг</th></tr>';
-  head2 += "</tr>";
+  head += '<th class="rt-final">Рейтинг</th></tr>';
 
-  // тело: строка = предмет
   const body = records.map((rec) => {
     const cps = rec.control_points || [];
     let row = `<td class="rt-subject">${escapeHtml(rec.subject_name)}</td>`;
+
     for (let k = 0; k < maxKt; k++) {
       const cp = cps[k];
-      if (!cp) {
-        row += works.map(() => '<td><span class="rt-cell is-empty"><span class="rt-cell__v">—</span></span></td>').join("");
-        row += '<td class="rt-total">—</td>';
-        continue;
+      const total = cp ? showNum(cp.total) : DASH;
+      const hasData = cp && !isBlank(cp.total);
+
+      if (hasData) {
+        const cpJson = escapeHtml(JSON.stringify(cp));
+        row += `<td class="rt-total rt-total--clickable"
+                    data-cp="${cpJson}"
+                    data-kt="${k + 1}"
+                    data-subject="${escapeHtml(rec.subject_name)}"
+                    title="Нажмите для деталей"
+                    tabindex="0"
+                    role="button">${total}</td>`;
+      } else {
+        row += `<td class="rt-total">${total}</td>`;
       }
-      row += works.map((w) => ratingCell(cp[w])).join("");
-      row += `<td class="rt-total">${showNum(cp.total)}</td>`;
     }
+
     row += `<td class="rt-rating">${showNum(rec.final_rating)}</td>`;
     return `<tr>${row}</tr>`;
   }).join("");
@@ -293,20 +288,11 @@ function renderRatingTable(records) {
   return `
     <div class="table-scroll">
       <table class="rt">
-        <thead>${head1}${head2}</thead>
+        <thead>${head}</thead>
         <tbody>${body}</tbody>
       </table>
     </div>
-    <p class="rt-caption">Под баллом — вес вида работы внутри КТ. «Вес» рядом с КТ — её доля в итоговом рейтинге (все КТ равны).</p>`;
-}
-
-function ratingCell(work) {
-  const score = work ? work.score : "-";
-  const weight = work ? work.weight : "-";
-  const blank = isBlank(score);
-  // вес показываем только у оценённых работ — иначе под прочерком висит «0%»
-  const w = blank || isBlank(weight) ? "" : `<span class="rt-cell__w">${escapeHtml(weight)}%</span>`;
-  return `<td><span class="rt-cell${blank ? " is-empty" : ""}"><span class="rt-cell__v">${showNum(score)}</span>${w}</span></td>`;
+    <p class="rt-caption">Нажмите на балл КТ, чтобы увидеть детализацию по видам работ.</p>`;
 }
 
 // ---- оценочная таблица ----
@@ -329,10 +315,101 @@ function renderGradeTable(records) {
     </div>`;
 }
 
-// при старте подставляем последний введённый номер (если есть) и фокусируемся
+// ============================================================
+// Попап детализации КТ
+// ============================================================
+const popupEl = document.createElement("div");
+popupEl.id = "kt-popup";
+popupEl.className = "kt-popup";
+popupEl.setAttribute("role", "dialog");
+popupEl.setAttribute("aria-modal", "true");
+popupEl.setAttribute("aria-labelledby", "kt-popup-title");
+popupEl.hidden = true;
+popupEl.innerHTML = `
+  <div class="kt-popup__backdrop"></div>
+  <div class="kt-popup__box">
+    <button class="kt-popup__close" type="button" aria-label="Закрыть">✕</button>
+    <h3 class="kt-popup__title" id="kt-popup-title"></h3>
+    <table class="kt-popup__table">
+      <thead>
+        <tr>
+          <th class="kt-popup__col-name">Вид работы</th>
+          <th class="kt-popup__col-weight">Вес</th>
+          <th class="kt-popup__col-score">Балл</th>
+        </tr>
+      </thead>
+      <tbody id="kt-popup-body"></tbody>
+    </table>
+    <div class="kt-popup__total" id="kt-popup-total"></div>
+  </div>`;
+document.body.appendChild(popupEl);
+
+function openKtPopup(subject, ktNum, cp) {
+  document.getElementById("kt-popup-title").textContent = `${subject} · КТ ${ktNum}`;
+
+  const rows = Object.entries(WORK_LABELS)
+    .filter(([key]) => {
+      const w = cp[key];
+      if (!w) return false;
+      if (isBlank(w.weight) || isZeroWeight(w.weight)) return false;
+      return true;
+    })
+    .map(([key, label]) => {
+      const w = cp[key];
+      const score  = !isBlank(w.score)  ? escapeHtml(String(w.score))  : DASH;
+      const weight = `${escapeHtml(String(w.weight))}%`;
+      return `<tr>
+        <td class="kt-popup__col-name">${label}</td>
+        <td class="kt-popup__col-weight">${weight}</td>
+        <td class="kt-popup__col-score">${score}</td>
+      </tr>`;
+    }).join("");
+
+  document.getElementById("kt-popup-body").innerHTML =
+    rows || `<tr><td colspan="3" style="text-align:center;color:#aaa">Нет данных</td></tr>`;
+
+  document.getElementById("kt-popup-total").innerHTML =
+    `Итог КТ: <strong>${showNum(cp.total)}</strong>`;
+
+  popupEl.hidden = false;
+  document.body.style.overflow = "hidden";
+  popupEl.querySelector(".kt-popup__close").focus();
+}
+
+function closeKtPopup() {
+  popupEl.hidden = true;
+  document.body.style.overflow = "";
+}
+
+popupEl.querySelector(".kt-popup__close").addEventListener("click", closeKtPopup);
+popupEl.querySelector(".kt-popup__backdrop").addEventListener("click", closeKtPopup);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeKtPopup(); });
+
+document.addEventListener("click", (e) => {
+  const cell = e.target.closest(".rt-total--clickable");
+  if (!cell) return;
+  try {
+    const cp      = JSON.parse(cell.dataset.cp);
+    const kt      = cell.dataset.kt;
+    const subject = cell.dataset.subject;
+    openKtPopup(subject, kt, cp);
+  } catch (_) {}
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const cell = e.target.closest(".rt-total--clickable");
+  if (!cell) return;
+  e.preventDefault();
+  cell.click();
+});
+
+// ============================================================
+// Восстановление последнего номера
+// ============================================================
 try {
   const last = localStorage.getItem(LAST_ZACH_KEY);
   if (last) zachInput.value = last;
-} catch (_) { /* приватный режим */ }
+} catch (_) {}
 zachInput.focus();
 zachInput.select();

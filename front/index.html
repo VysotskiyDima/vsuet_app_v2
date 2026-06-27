@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Зачётная книжка · Рейтинг успеваемости ВГУИТ</title>
-  <meta name="description" content="Рейтинг успеваемости студентов ВГУИТ по номеру зачётной книжки." />
+  <title>Зачётная книжка · Рейтинг успеваемости</title>
+  <meta name="description" content="Рейтинг успеваемости студентов по номеру зачётной книжки." />
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='92' fill='none' stroke='%232E2BD6' stroke-width='8'/%3E%3Ccircle cx='100' cy='100' r='74' fill='none' stroke='%232E2BD6' stroke-width='4'/%3E%3Cpath d='M100 60 L112 88 L140 100 L112 112 L100 140 L88 112 L60 100 L88 88 Z' fill='%232E2BD6'/%3E%3C/svg%3E" />
 
@@ -13,9 +13,135 @@
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    /* ── Попап КТ ─────────────────────────────────────────── */
+    .rt-total--clickable {
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .rt-total--clickable:hover,
+    .rt-total--clickable:focus {
+      background: rgba(46, 43, 214, 0.08);
+      outline: 2px solid rgba(46, 43, 214, 0.4);
+      outline-offset: -2px;
+    }
+
+    .kt-popup {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .kt-popup[hidden] { display: none; }
+
+    .kt-popup__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(2px);
+    }
+
+    .kt-popup__box {
+      position: relative;
+      z-index: 1;
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px 32px 24px;
+      min-width: 320px;
+      max-width: 460px;
+      width: 90%;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.22);
+    }
+
+    .kt-popup__close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .kt-popup__close:hover { background: #f0f0f0; color: #222; }
+
+    .kt-popup__title {
+      margin: 0 0 18px;
+      font-family: 'Golos Text', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      padding-right: 32px;
+      line-height: 1.35;
+    }
+
+    .kt-popup__table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      table-layout: fixed;
+    }
+
+    .kt-popup__col-name   { width: 55%; }
+    .kt-popup__col-weight { width: 22%; }
+    .kt-popup__col-score  { width: 23%; }
+
+    .kt-popup__table th,
+    .kt-popup__table td {
+      padding: 9px 10px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      vertical-align: middle;
+    }
+    .kt-popup__table th {
+      font-weight: 600;
+      color: #555;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* выравнивание числовых колонок — и th и td */
+    .kt-popup__table th.kt-popup__col-weight,
+    .kt-popup__table th.kt-popup__col-score,
+    .kt-popup__table td.kt-popup__col-weight,
+    .kt-popup__table td.kt-popup__col-score {
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+    }
+    .kt-popup__table th.kt-popup__col-weight,
+    .kt-popup__table th.kt-popup__col-score {
+      font-family: 'Golos Text', sans-serif;
+      font-size: 0.78rem;
+    }
+
+    .kt-popup__table tbody tr:last-child td { border-bottom: none; }
+
+    .kt-popup__total {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 2px solid #eee;
+      font-size: 0.95rem;
+      text-align: right;
+      color: #333;
+    }
+    .kt-popup__total strong {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      color: #2E2BD6;
+      margin-left: 6px;
+    }
+  </style>
 </head>
 <body>
-  <!-- Reusable mini stamp (rings + compass star), no text -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
     <symbol id="seal-mini" viewBox="0 0 200 200">
       <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="7" />
@@ -24,11 +150,10 @@
     </symbol>
   </svg>
 
-  <!-- ===================== ВХОД (обложка зачётки) ===================== -->
+  <!-- ===================== ВХОД ===================== -->
   <main id="view-login" class="view view--login">
     <section class="cover" aria-labelledby="cover-title">
 
-      <p class="cover__eyebrow">Воронежский государственный университет инженерных технологий</p>
       <h1 id="cover-title" class="cover__title">Зачётная<br />книжка</h1>
       <p class="cover__sub">Откройте рейтинг успеваемости по номеру зачётной книжки.</p>
 
@@ -43,15 +168,15 @@
             inputmode="numeric"
             autocomplete="off"
             spellcheck="false"
-            placeholder="247162"
+            placeholder="Введите номер зачётки"
             aria-describedby="login-error"
+            style="font-size: 0.85rem;"
           />
           <button id="login-btn" class="btn" type="submit">Открыть</button>
         </div>
         <p id="login-error" class="field__error" role="alert" hidden></p>
       </form>
 
-      <p class="cover__hint">Для примера: <button type="button" class="linklike" id="demo-fill">247162</button></p>
     </section>
   </main>
 
@@ -60,7 +185,7 @@
     <header class="topbar">
       <div class="topbar__brand">
         <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
-        <span class="brand__name">ВГУИТ<span class="brand__sep">·</span><span class="brand__sub">Рейтинг</span></span>
+        <span class="brand__name">Рейтинг<span class="brand__sep">·</span><span class="brand__sub">успеваемости</span></span>
       </div>
       <div class="topbar__id">
         <span class="topbar__id-label">Зачётная книжка</span>
