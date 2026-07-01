@@ -1,0 +1,39 @@
+services:
+  app-debug:
+    build:
+      context: .
+      dockerfile: Dockerfile.debug
+    container_name: vsuet_rating_v2-debug-app
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    volumes:
+      - ./app:/app/app
+      - ./resources:/app/resources
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: "${DEBUG_REDIS_HOST:-redis}"
+      REDIS_PORT: "${DEBUG_REDIS_PORT:-6379}"
+
+  redis-debug:
+    image: redis:7-alpine
+    container_name: vsuet_rating_v2-debug-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-debug-data:/data
+
+  nginx-debug:
+    image: nginx:alpine
+    container_name: vsuet_rating_v2-debug-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./front:/usr/share/nginx/html
+      - ./nginx/nginx.debug.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app-debug
+
+volumes:
+  redis-debug-data:

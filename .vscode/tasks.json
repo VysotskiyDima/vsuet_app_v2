@@ -2,39 +2,28 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "start-redis-debug",
+      "label": "debug: app + existing redis",
       "type": "shell",
-      "command": "docker start vsuet_rating_v2-redis-DEBUG 2>/dev/null || docker run -d --name vsuet_rating_v2-redis-DEBUG -p 6379:6379 -v vsuet_rating_v2-redis-DEBUG-data:/data redis:7-alpine redis-server --save 60 1 --dbfilename dump.rdb --dir /data",
+      "command": "docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d redis && DEBUG_REDIS_HOST=redis DEBUG_REDIS_PORT=6379 docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build app-debug && sleep 3",
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
-      "presentation": {
-        "reveal": "silent",
-        "panel": "shared"
-      }
+      "presentation": { "reveal": "silent", "panel": "shared" }
     },
     {
-      "label": "clear-redis-debug",
+      "label": "debug: app + clean redis",
       "type": "shell",
-      "command": "docker exec vsuet_rating_v2-redis-DEBUG sh -c \"until redis-cli ping | grep -q PONG; do sleep 0.1; done && redis-cli flushall\"",
+      "command": "docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d redis-debug && docker exec vsuet_rating_v2-debug-redis redis-cli FLUSHALL && DEBUG_REDIS_HOST=redis-debug DEBUG_REDIS_PORT=6379 docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build app-debug && sleep 3",
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
-      "presentation": {
-        "reveal": "silent",
-        "panel": "shared"
-      }
+      "presentation": { "reveal": "silent", "panel": "shared" }
     },
     {
-      "label": "start-redis-debug-clear",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "start-redis-debug",
-        "clear-redis-debug"
-      ],
-      "problemMatcher": []
-    },
-    {
-      "label": "stop-redis-debug",
+      "label": "debug: nginx + app + clean redis",
       "type": "shell",
-      "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>/dev/null || true",
-      "problemMatcher": []
+      "command": "docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d redis-debug && docker exec vsuet_rating_v2-debug-redis redis-cli FLUSHALL && DEBUG_REDIS_HOST=redis-debug DEBUG_REDIS_PORT=6379 docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build app-debug nginx-debug && sleep 3",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
     }
   ]
 }

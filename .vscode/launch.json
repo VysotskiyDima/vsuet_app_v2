@@ -2,40 +2,37 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Rating",
+      "name": "1) FastAPI (docker) + Redis (existing)",
       "type": "debugpy",
-      "request": "launch",
-      "module": "uvicorn",
-      "args": ["app.main:app", "--host", "0.0.0.0", "--port", "8000"],
-      "cwd": "${workspaceFolder}",
-      "python": "${workspaceFolder}/.venv/bin/python",
-      "console": "integratedTerminal",
-      "preLaunchTask": "start-redis-debug",
-      "postDebugTask": "stop-redis-debug",
-      "env": {
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "PARSING_YEAR": "2025-2026",
-        "PARSING_SEMESTER": "0"
-      }
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}/app", "remoteRoot": "/app/app" }
+      ],
+      "justMyCode": false,
+      "preLaunchTask": "debug: app + existing redis"
     },
     {
-      "name": "Rating (Clear DB)",
+      "name": "2) FastAPI (docker) + Redis (clean)",
       "type": "debugpy",
-      "request": "launch",
-      "module": "uvicorn",
-      "args": ["app.main:app", "--host", "0.0.0.0", "--port", "8000"],
-      "cwd": "${workspaceFolder}",
-      "python": "${workspaceFolder}/.venv/bin/python",
-      "console": "integratedTerminal",
-      "preLaunchTask": "start-redis-debug-clear",
-      "postDebugTask": "stop-redis-debug",
-      "env": {
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "PARSING_YEAR": "2025-2026",
-        "PARSING_SEMESTER": "0"
-      }
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}/app", "remoteRoot": "/app/app" }
+      ],
+      "justMyCode": false,
+      "preLaunchTask": "debug: app + clean redis"
+    },
+    {
+      "name": "3) Nginx + FastAPI (docker) + Redis (clean)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}/app", "remoteRoot": "/app/app" }
+      ],
+      "justMyCode": false,
+      "preLaunchTask": "debug: nginx + app + clean redis"
     }
   ]
 }
