@@ -331,7 +331,8 @@ button { font-family: inherit; }
 .section__tag--grade { color: var(--ink-soft); }
 
 /* обёртка для горизонтального скролла широких таблиц */
-.table-scroll {
+.table-scroll,
+.rt-scroll {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -340,7 +341,7 @@ button { font-family: inherit; }
   -webkit-overflow-scrolling: touch;
 }
 
-table { border-collapse: collapse; width: 100%; }
+table { border-collapse: separate; border-spacing: 0; width: 100%; }
 
 /* ---------- Рейтинговая таблица (КТ) ---------- */
 .rt { font-variant-numeric: tabular-nums; min-width: 640px; }

@@ -204,16 +204,12 @@ function renderSection(section, index) {
   const { type, records } = section;
   const rating = isRatingRecord(records[0]);
   const table  = rating ? renderRatingTable(records) : renderGradeTable(records);
-  const tag    = rating
-    ? '<span class="section__tag">Рейтинг · КТ</span>'
-    : '<span class="section__tag section__tag--grade">Итоговая оценка</span>';
 
   return `
     <section class="section" style="animation-delay:${Math.min(index, 8) * 55}ms">
       <div class="section__head">
         <h2 class="section__title">${escapeHtml(type.title)}</h2>
         <span class="section__count">${disciplines(records.length)}</span>
-        ${tag}
       </div>
       ${table}
     </section>`;
