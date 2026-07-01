@@ -33,13 +33,17 @@
       outline-offset: -2px;
     }
 
+    /* ── Popup: bottom-sheet на мобилке, центр на десктопе ── */
     .kt-popup {
       position: fixed;
       inset: 0;
       z-index: 1000;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
+    }
+    @media (min-width: 600px) {
+      .kt-popup { align-items: center; }
     }
     .kt-popup[hidden] { display: none; }
 
@@ -54,26 +58,44 @@
       position: relative;
       z-index: 1;
       background: #fff;
-      border-radius: 14px;
-      padding: 28px 32px 24px;
-      min-width: 320px;
-      max-width: 460px;
-      width: 90%;
-      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.22);
+      /* мобилка — bottom sheet */
+      border-radius: 18px 18px 0 0;
+      padding: 8px 20px 32px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 -4px 40px rgba(0,0,0,0.18);
     }
+    @media (min-width: 600px) {
+      .kt-popup__box {
+        border-radius: 14px;
+        padding: 28px 32px 24px;
+        min-width: 320px;
+        max-width: 460px;
+        width: 90%;
+        max-height: none;
+        box-shadow: 0 12px 48px rgba(0,0,0,0.22);
+      }
+    }
+
+    /* drag handle */
+    .kt-popup__handle {
+      width: 40px; height: 4px;
+      background: #ddd; border-radius: 2px;
+      margin: 12px auto 20px;
+    }
+    @media (min-width: 600px) { .kt-popup__handle { display: none; } }
 
     .kt-popup__close {
       position: absolute;
-      top: 14px;
-      right: 16px;
-      background: none;
-      border: none;
-      font-size: 18px;
-      line-height: 1;
-      cursor: pointer;
-      color: #888;
-      padding: 4px 8px;
-      border-radius: 6px;
+      top: 14px; right: 16px;
+      background: none; border: none;
+      font-size: 18px; line-height: 1;
+      cursor: pointer; color: #888;
+      min-width: 44px; min-height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
       transition: background 0.15s, color 0.15s;
     }
     .kt-popup__close:hover { background: #f0f0f0; color: #222; }
@@ -81,39 +103,29 @@
     .kt-popup__title {
       margin: 0 0 18px;
       font-family: 'Golos Text', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      padding-right: 32px;
-      line-height: 1.35;
+      font-size: 1rem; font-weight: 700;
+      padding-right: 40px; line-height: 1.35;
     }
 
     .kt-popup__table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-      table-layout: fixed;
+      width: 100%; border-collapse: collapse;
+      font-size: 0.9rem; table-layout: fixed;
     }
-
     .kt-popup__col-name   { width: 55%; }
     .kt-popup__col-weight { width: 22%; }
     .kt-popup__col-score  { width: 23%; }
 
     .kt-popup__table th,
     .kt-popup__table td {
-      padding: 9px 10px;
+      padding: 11px 10px;
       text-align: left;
       border-bottom: 1px solid #eee;
       vertical-align: middle;
     }
     .kt-popup__table th {
-      font-weight: 600;
-      color: #555;
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-weight: 600; color: #555;
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em;
     }
-
-    /* выравнивание числовых колонок — и th и td */
     .kt-popup__table th.kt-popup__col-weight,
     .kt-popup__table th.kt-popup__col-score,
     .kt-popup__table td.kt-popup__col-weight,
@@ -127,23 +139,96 @@
       font-family: 'Golos Text', sans-serif;
       font-size: 0.78rem;
     }
-
     .kt-popup__table tbody tr:last-child td { border-bottom: none; }
 
     .kt-popup__total {
-      margin-top: 16px;
-      padding-top: 14px;
+      margin-top: 16px; padding-top: 14px;
       border-top: 2px solid #eee;
-      font-size: 0.95rem;
-      text-align: right;
-      color: #333;
+      font-size: 0.95rem; text-align: right; color: #333;
     }
     .kt-popup__total strong {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.1rem;
-      color: #2E2BD6;
-      margin-left: 6px;
+      font-size: 1.1rem; color: #2E2BD6; margin-left: 6px;
     }
+
+    /* ── Sticky-таблица рейтинга ──────────────────────────── */
+
+    /*
+      Обёртка с горизонтальным скроллом.
+      overflow-x: auto — скроллится только таблица, не вся страница.
+    */
+    .rt-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      /* тень-подсказка справа когда есть что скроллить */
+      background:
+        linear-gradient(to right, white 0%, transparent 100%) 0 0 / 20px 100% no-repeat local,
+        linear-gradient(to left,  white 0%, transparent 100%) 100% 0 / 20px 100% no-repeat local,
+        linear-gradient(to right, rgba(0,0,0,0.08) 0%, transparent 100%) 0 0 / 12px 100% no-repeat scroll,
+        linear-gradient(to left,  rgba(0,0,0,0.08) 0%, transparent 100%) 100% 0 / 12px 100% no-repeat scroll;
+    }
+
+    .rt {
+      /* важно: border-collapse ломает sticky, нужен separate */
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    /* Колонка «Дисциплина» — прилипает слева */
+    .rt .rt-subject {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: #fff;
+      /* правая граница вместо border-collapse */
+      box-shadow: 2px 0 4px -1px rgba(0,0,0,0.10);
+    }
+    /* Заголовок «Дисциплина» — выше остальных sticky */
+    .rt thead .rt-subject {
+      z-index: 3;
+    }
+
+    /* На мобилке сужаем колонку названия */
+    .rt .rt-subject {
+      min-width: 130px;
+      max-width: 160px;
+      white-space: normal;
+      word-break: break-word;
+      font-size: 0.82rem;
+      line-height: 1.3;
+    }
+    @media (min-width: 640px) {
+      .rt .rt-subject {
+        min-width: 180px;
+        max-width: 240px;
+        font-size: inherit;
+      }
+    }
+
+    /* Остальные ячейки таблицы — убираем лишние отступы на мобилке */
+    @media (max-width: 639px) {
+      .rt thead th,
+      .rt tbody td {
+        padding: 8px 10px;
+        font-size: 0.82rem;
+      }
+      .rt-caption { font-size: 0.78rem; }
+    }
+
+    /* ── Topbar на мобилке ────────────────────────────────── */
+    @media (max-width: 599px) {
+      .topbar {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 10px 16px 10px;
+      }
+      .topbar__brand { order: 1; }
+      #logout-btn    { order: 2; margin-left: auto; padding: 6px 14px; font-size: 0.82rem; }
+      .topbar__id    { order: 3; width: 100%; font-size: 0.8rem; padding: 0; }
+    }
+
+    /* ── Инпут — не зумить на iOS (font-size >= 16px) ──────── */
+    #zach { font-size: 1rem !important; }
   </style>
 </head>
 <body>
@@ -175,7 +260,7 @@
             spellcheck="false"
             placeholder="Введите номер зачётки"
             aria-describedby="login-error"
-            style="font-size: 1rem;"
+            style="font-size: 0.85rem;"
           />
           <button id="login-btn" class="btn" type="submit">Открыть</button>
         </div>

@@ -53,15 +53,9 @@ function plural(n, forms) {
 }
 const disciplines = (n) => `${n} ${plural(n, ["дисциплина", "дисциплины", "дисциплин"])}`;
 
-function isBlank(v) {
-  return v === null || v === undefined || v === "-" || v === "";
-}
-function isZeroWeight(v) {
-  return v === 0 || v === "0" || v === 0.0;
-}
-function showNum(v) {
-  return isBlank(v) ? DASH : escapeHtml(v);
-}
+function isBlank(v) { return v === null || v === undefined || v === "-" || v === ""; }
+function isZeroWeight(v) { return v === 0 || v === "0" || v === 0.0; }
+function showNum(v) { return isBlank(v) ? DASH : escapeHtml(v); }
 
 function gradeClass(grade) {
   switch (String(grade).trim()) {
@@ -75,9 +69,7 @@ function gradeClass(grade) {
   }
 }
 
-function isRatingRecord(rec) {
-  return rec && Array.isArray(rec.control_points);
-}
+function isRatingRecord(rec) { return rec && Array.isArray(rec.control_points); }
 
 const sealSvg = '<svg class="state__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini"/></svg>';
 
@@ -94,11 +86,7 @@ async function apiGet(path) {
 // ВХОД
 // ============================================================
 function setLoginError(message) {
-  if (!message) {
-    loginError.hidden = true;
-    loginError.textContent = "";
-    return;
-  }
+  if (!message) { loginError.hidden = true; loginError.textContent = ""; return; }
   loginError.hidden = false;
   loginError.textContent = message;
 }
@@ -111,22 +99,13 @@ function setLoginLoading(loading) {
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   setLoginError("");
-
   const zach = zachInput.value.replace(/\D/g, "").trim();
-  if (!zach) {
-    setLoginError("Введите номер зачётной книжки.");
-    zachInput.focus();
-    return;
-  }
-
+  if (!zach) { setLoginError("Введите номер зачётной книжки."); zachInput.focus(); return; }
   setLoginLoading(true);
   try {
     const data = await apiGet(`/students/${encodeURIComponent(zach)}/exists`);
-    if (data && data.exists) {
-      openRating(zach);
-    } else {
-      setLoginError(`Зачётная книжка № ${zach} не найдена. Проверьте номер.`);
-    }
+    if (data && data.exists) { openRating(zach); }
+    else { setLoginError(`Зачётная книжка № ${zach} не найдена. Проверьте номер.`); }
   } catch (err) {
     setLoginError("Не удалось связаться с сервером. Проверьте соединение.");
   } finally {
@@ -140,21 +119,14 @@ zachInput.addEventListener("input", () => {
   if (!loginError.hidden) setLoginError("");
 });
 
-if (demoFill) demoFill.addEventListener("click", () => {
-  zachInput.value = "247162";
-  zachInput.focus();
-});
-
+if (demoFill) demoFill.addEventListener("click", () => { zachInput.value = "247162"; zachInput.focus(); });
 logoutBtn.addEventListener("click", closeRating);
 
 // ============================================================
 // Переключение экранов
 // ============================================================
 const LAST_ZACH_KEY = "rating:lastZach";
-
-function rememberZach(zach) {
-  try { localStorage.setItem(LAST_ZACH_KEY, zach); } catch (_) {}
-}
+function rememberZach(zach) { try { localStorage.setItem(LAST_ZACH_KEY, zach); } catch (_) {} }
 
 function openRating(zach) {
   currentZach.textContent = zach;
@@ -201,16 +173,13 @@ async function loadRating(zach) {
     if (res.status === "fulfilled") {
       const records = Array.isArray(res.value) ? res.value : [];
       if (records.length) sections.push({ type: VED_TYPES[i], records });
-    } else {
-      failed += 1;
-    }
+    } else { failed += 1; }
   });
 
   if (failed === VED_TYPES.length) {
     renderState("error", "Не удалось загрузить данные", "Сервер недоступен или вернул ошибку.", () => loadRating(zach));
     return;
   }
-
   if (sections.length === 0) {
     renderState("empty", "Ведомостей пока нет", `По зачётной книжке № ${zach} данные об успеваемости отсутствуют.`);
     return;
@@ -234,8 +203,8 @@ async function loadRating(zach) {
 function renderSection(section, index) {
   const { type, records } = section;
   const rating = isRatingRecord(records[0]);
-  const table = rating ? renderRatingTable(records) : renderGradeTable(records);
-  const tag = rating
+  const table  = rating ? renderRatingTable(records) : renderGradeTable(records);
+  const tag    = rating
     ? '<span class="section__tag">Рейтинг · КТ</span>'
     : '<span class="section__tag section__tag--grade">Итоговая оценка</span>';
 
@@ -250,10 +219,11 @@ function renderSection(section, index) {
     </section>`;
 }
 
-// ---- рейтинговая таблица (компактная: только КТ + рейтинг) ----
+// ---- рейтинговая таблица со sticky-колонкой ----
 function renderRatingTable(records) {
   const maxKt = records.reduce((m, r) => Math.max(m, (r.control_points || []).length), 0);
 
+  // Заголовок: sticky-ячейка «Дисциплина» + КТ-колонки + «Рейтинг»
   let head = '<tr><th class="rt-subject">Дисциплина</th>';
   for (let k = 1; k <= maxKt; k++) {
     head += `<th class="kt-result">КТ ${k}</th>`;
@@ -262,6 +232,7 @@ function renderRatingTable(records) {
 
   const body = records.map((rec) => {
     const cps = rec.control_points || [];
+    // sticky-ячейка названия
     let row = `<td class="rt-subject">${escapeHtml(rec.subject_name)}</td>`;
 
     for (let k = 0; k < maxKt; k++) {
@@ -287,8 +258,9 @@ function renderRatingTable(records) {
     return `<tr>${row}</tr>`;
   }).join("");
 
+  // rt-scroll — новая обёртка вместо table-scroll, содержит тени-подсказки
   return `
-    <div class="table-scroll">
+    <div class="rt-scroll">
       <table class="rt">
         <thead>${head}</thead>
         <tbody>${body}</tbody>
@@ -330,6 +302,7 @@ popupEl.hidden = true;
 popupEl.innerHTML = `
   <div class="kt-popup__backdrop"></div>
   <div class="kt-popup__box">
+    <div class="kt-popup__handle"></div>
     <button class="kt-popup__close" type="button" aria-label="Закрыть">✕</button>
     <h3 class="kt-popup__title" id="kt-popup-title"></h3>
     <table class="kt-popup__table">
@@ -369,7 +342,6 @@ function openKtPopup(subject, ktNum, cp) {
 
   document.getElementById("kt-popup-body").innerHTML =
     rows || `<tr><td colspan="3" style="text-align:center;color:#aaa">Нет данных</td></tr>`;
-
   document.getElementById("kt-popup-total").innerHTML =
     `Итог КТ: <strong>${showNum(cp.total)}</strong>`;
 
@@ -391,10 +363,7 @@ document.addEventListener("click", (e) => {
   const cell = e.target.closest(".rt-total--clickable");
   if (!cell) return;
   try {
-    const cp      = JSON.parse(cell.dataset.cp);
-    const kt      = cell.dataset.kt;
-    const subject = cell.dataset.subject;
-    openKtPopup(subject, kt, cp);
+    openKtPopup(cell.dataset.subject, cell.dataset.kt, JSON.parse(cell.dataset.cp));
   } catch (_) {}
 });
 

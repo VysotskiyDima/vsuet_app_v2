@@ -505,8 +505,28 @@ table { border-collapse: collapse; width: 100%; }
 @media (max-width: 560px) {
   .cover__eyebrow { max-width: 78%; }
   .cover__seal { top: -26px; right: -10px; }
-  .field__row { flex-wrap: wrap; }
-  .btn { flex: 1; }
+
+  .field__row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .field__hash { display: none; }
+
+  .field__input {
+    width: 100%;
+    flex: none;
+    font-size: 1.2rem;
+    padding: 6px 4px;
+  }
+
+  #login-btn {
+    width: 100%;
+    flex: none;
+    height: 48px;
+  }
+
   .topbar__id-label { display: none; }
 
   /* Оптимизация верхней панели для мобильных */
