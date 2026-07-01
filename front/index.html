@@ -3,10 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Зачётная книжка · Рейтинг успеваемости</title>
+  <title>Рейтинг успеваемости</title>
   <meta name="description" content="Рейтинг успеваемости студентов по номеру зачётной книжки." />
 
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='92' fill='none' stroke='%232E2BD6' stroke-width='8'/%3E%3Ccircle cx='100' cy='100' r='74' fill='none' stroke='%232E2BD6' stroke-width='4'/%3E%3Cpath d='M100 60 L112 88 L140 100 L112 112 L100 140 L88 112 L60 100 L88 88 Z' fill='%232E2BD6'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2E2BD6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Рейтинг" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -170,7 +175,7 @@
             spellcheck="false"
             placeholder="Введите номер зачётки"
             aria-describedby="login-error"
-            style="font-size: 0.85rem;"
+            style="font-size: 1rem;"
           />
           <button id="login-btn" class="btn" type="submit">Открыть</button>
         </div>
@@ -185,7 +190,7 @@
     <header class="topbar">
       <div class="topbar__brand">
         <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
-        <span class="brand__name">Рейтинг<span class="brand__sep">·</span><span class="brand__sub">успеваемости</span></span>
+        <span class="brand__name">Рейтинг успеваемости</span>
       </div>
       <div class="topbar__id">
         <span class="topbar__id-label">Зачётная книжка</span>

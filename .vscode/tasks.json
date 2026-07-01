@@ -35,6 +35,39 @@
       "type": "shell",
       "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>/dev/null || true",
       "problemMatcher": []
+    },
+    {
+      "label": "start-frontend",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m http.server -d front 3000",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Serving HTTP on",
+          "endsPattern": "Serving HTTP on"
+        }
+      }
+    },
+    {
+      "label": "wait-for-redis",
+      "type": "shell",
+      "command": "docker exec vsuet_rating_v2-redis-DEBUG sh -c \"until redis-cli ping | grep -q PONG; do sleep 0.1; done\"",
+      "problemMatcher": []
+    },
+    {
+      "label": "start-all-debug-services",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "start-redis-debug",
+        "wait-for-redis",
+        "start-frontend"
+      ],
+      "problemMatcher": []
     }
   ]
 }

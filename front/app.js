@@ -4,7 +4,10 @@
 
 "use strict";
 
-const API_BASE = "";
+const API_BASE =
+  window.location.port === "3000"
+    ? `http://${window.location.hostname}:8000`
+    : "";
 
 const VED_TYPES = [
   { segment: "zachet",            title: "Зачёт",              kind: "rating" },
@@ -250,11 +253,10 @@ function renderSection(section, index) {
 // ---- рейтинговая таблица (компактная: только КТ + рейтинг) ----
 function renderRatingTable(records) {
   const maxKt = records.reduce((m, r) => Math.max(m, (r.control_points || []).length), 0);
-  const ktWeight = maxKt ? Math.round(100 / maxKt) : 0;
 
   let head = '<tr><th class="rt-subject">Дисциплина</th>';
   for (let k = 1; k <= maxKt; k++) {
-    head += `<th class="kt-result">КТ ${k}<span class="kt-group__w">вес ${ktWeight}%</span></th>`;
+    head += `<th class="kt-result">КТ ${k}</th>`;
   }
   head += '<th class="rt-final">Рейтинг</th></tr>';
 
@@ -413,3 +415,14 @@ try {
 } catch (_) {}
 zachInput.focus();
 zachInput.select();
+
+// ============================================================
+// Регистрация Service Worker (PWA)
+// ============================================================
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then((reg) => console.log("Service Worker зарегистрирован:", reg.scope))
+      .catch((err) => console.error("Ошибка регистрации Service Worker:", err));
+  });
+}
