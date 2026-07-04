@@ -1,12 +1,12 @@
-const CACHE_NAME = "vsuet-rating-v2";
+const CACHE_NAME = "vsuet-rating-v23";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
   "./app.js",
-  "./styles.css?v=3",
-  "./logo.svg",
-  "./logo-192.png",
-  "./logo-512.png"
+  "./styles.css?v=15",
+  "./resources/logo.svg",
+  "./resources/logo-192.png",
+  "./resources/logo-512.png"
 ];
 
 // Install Event: cache static assets
@@ -37,44 +37,55 @@ self.addEventListener("activate", (e) => {
 
 // Fetch Event: handle network requests with PWA strategies
 self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
+  if (e.request.method !== "GET") return;
 
-  // For API requests, use Network-First strategy (with cache fallback so user can view data offline)
-  if (url.pathname.includes("/students/") || url.pathname.includes("/rating/")) {
-    e.respondWith(
-      fetch(e.request)
+  // Helper function to fetch with a timeout of 2.5 seconds (to prevent hanging in semi-offline local network)
+  const fetchWithTimeout = (request, timeout = 2500) => {
+    return new Promise((resolve, reject) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        reject(new Error("Timeout"));
+      }, timeout);
+
+      fetch(request, { signal: controller.signal })
         .then((response) => {
-          if (response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, responseClone);
-            });
-          }
-          return response;
+          clearTimeout(timeoutId);
+          resolve(response);
         })
-        .catch(() => {
-          return caches.match(e.request);
-        })
-    );
-  } else {
-    // For static files (HTML, CSS, JS, fonts), use Stale-While-Revalidate
-    e.respondWith(
-      caches.match(e.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          // Fetch updated version in background to update cache
-          fetch(e.request)
-            .then((response) => {
-              if (response.status === 200) {
-                caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(e.request, response);
-                });
-              }
-            })
-            .catch(() => {/* Ignore errors offline */});
-          return cachedResponse;
+        .catch((err) => {
+          clearTimeout(timeoutId);
+          reject(err);
+        });
+    });
+  };
+
+  // Network-First для всего: всегда идём в сеть, кэш — только офлайн-фолбэк
+  e.respondWith(
+    fetchWithTimeout(e.request)
+      .then((response) => {
+        if (response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, responseClone);
+          });
         }
-        return fetch(e.request);
+        return response;
       })
-    );
-  }
+      .catch(() => {
+        return caches.match(e.request, { ignoreVary: true }).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          // Открытие страницы офлайн без кэша конкретного URL — отдаём оболочку приложения
+          if (e.request.mode === "navigate") {
+            return caches.match("./index.html", { ignoreVary: true });
+          }
+          // Return 504 to prevent browser from falling back to network and hanging
+          return new Response(JSON.stringify({ error: "Offline and no cache" }), {
+            status: 504,
+            statusText: "Gateway Timeout",
+            headers: { "Content-Type": "application/json" }
+          });
+        });
+      })
+  );
 });

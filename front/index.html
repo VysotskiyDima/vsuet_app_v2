@@ -6,9 +6,10 @@
   <title>Рейтинг успеваемости</title>
   <meta name="description" content="Рейтинг успеваемости студентов по номеру зачётной книжки." />
 
-  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="icon" type="image/svg+xml" href="resources/logo.svg" />
+  <link rel="apple-touch-icon" href="resources/logo-192.png" />
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#2E2BD6" />
+  <meta name="theme-color" content="#E9EAE3" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Рейтинг" />
@@ -17,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=15" />
 
   <style>
     /* ── Попап КТ ─────────────────────────────────────────── */
@@ -64,7 +65,7 @@
       width: 100%;
       max-height: 85vh;
       overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
       box-shadow: 0 -4px 40px rgba(0,0,0,0.18);
     }
     @media (min-width: 600px) {
@@ -104,7 +105,15 @@
       margin: 0 0 18px;
       font-family: 'Golos Text', sans-serif;
       font-size: 1rem; font-weight: 700;
-      padding-right: 40px; line-height: 1.35;
+      line-height: 1.35;
+    }
+
+    @media (min-width: 600px) {
+      .kt-popup__title { padding-right: 40px; }
+    }
+    @media (max-width: 599px) {
+      .kt-popup__close { display: none; }
+      .kt-popup__title { text-align: center; }
     }
 
     .kt-popup__table {
@@ -215,23 +224,13 @@
       .rt-caption { font-size: 0.78rem; }
     }
 
-    /* ── Topbar на мобилке ────────────────────────────────── */
-    @media (max-width: 599px) {
-      .topbar {
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 10px 16px 10px;
-      }
-      .topbar__brand { order: 1; }
-      #logout-btn    { order: 2; margin-left: auto; padding: 6px 14px; font-size: 0.82rem; }
-      .topbar__id    { order: 3; width: 100%; font-size: 0.8rem; padding: 0; }
-    }
+
 
     /* ── Инпут — не зумить на iOS (font-size >= 16px) ──────── */
     #zach { font-size: 1rem !important; }
   </style>
 </head>
-<body>
+<body ontouchstart="">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
     <symbol id="seal-mini" viewBox="0 0 200 200">
       <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="7" />
@@ -244,8 +243,7 @@
   <main id="view-login" class="view view--login">
     <section class="cover" aria-labelledby="cover-title">
 
-      <h1 id="cover-title" class="cover__title">Зачётная<br />книжка</h1>
-      <p class="cover__sub">Откройте рейтинг успеваемости по номеру зачётной книжки.</p>
+      <h1 id="cover-title" class="cover__title">Рейтинг<br />успеваемости</h1>
 
       <form id="login-form" class="field" novalidate>
         <label class="field__label" for="zach">Номер зачётной книжки</label>
@@ -275,13 +273,17 @@
     <header class="topbar">
       <div class="topbar__brand">
         <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
-        <span class="brand__name">Рейтинг успеваемости</span>
+        <span class="brand__name">Рейтинг <span class="brand__name-sub">успеваемости</span></span>
       </div>
       <div class="topbar__id">
         <span class="topbar__id-label">Зачётная книжка</span>
         <span class="topbar__id-num">№&nbsp;<span id="current-zach">—</span></span>
       </div>
-      <button id="logout-btn" class="btn btn--ghost" type="button">Закрыть</button>
+      <button id="logout-btn" class="btn btn--ghost btn--icon" type="button" aria-label="Выйти">
+        <svg class="icon-logout" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M3 1C2.44771 1 2 1.44772 2 2V13C2 13.5523 2.44772 14 3 14H10.5C10.7761 14 11 13.7761 11 13.5C11 13.2239 10.7761 13 10.5 13H3V2L10.5 2C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H3ZM12.6036 4.89645C12.4083 4.70118 12.0917 4.70118 11.8964 4.89645C11.7012 5.09171 11.7012 5.40829 11.8964 5.60355L13.2929 7H6.5C6.22386 7 6 7.22386 6 7.5C6 7.77614 6.22386 8 6.5 8H13.2929L11.8964 9.39645C11.7012 9.59171 11.7012 9.90829 11.8964 10.1036C12.0917 10.2988 12.4083 10.2988 12.6036 10.1036L14.8536 7.85355C15.0488 7.65829 15.0488 7.34171 14.8536 7.14645L12.6036 4.89645Z" fill="currentColor" />
+        </svg>
+      </button>
     </header>
 
     <main id="rating-content" class="content" aria-live="polite"></main>

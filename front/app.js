@@ -342,18 +342,85 @@ function openKtPopup(subject, ktNum, cp) {
     `Итог КТ: <strong>${showNum(cp.total)}</strong>`;
 
   popupEl.hidden = false;
+  // iOS игнорирует overflow:hidden на body — фиксируем страницу целиком
+  scrollLockY = window.scrollY;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${scrollLockY}px`;
+  document.body.style.width = "100%";
   document.body.style.overflow = "hidden";
   popupEl.querySelector(".kt-popup__close").focus();
 }
 
 function closeKtPopup() {
   popupEl.hidden = true;
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.width = "";
   document.body.style.overflow = "";
+  window.scrollTo(0, scrollLockY);
 }
 
 popupEl.querySelector(".kt-popup__close").addEventListener("click", closeKtPopup);
 popupEl.querySelector(".kt-popup__backdrop").addEventListener("click", closeKtPopup);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeKtPopup(); });
+
+// Свайп вниз для закрытия шторки на мобилке
+let touchStartY = 0;
+let touchCurrentY = 0;
+let isDragging = false;
+let scrollLockY = 0;
+const popupBox = popupEl.querySelector(".kt-popup__box");
+
+popupBox.addEventListener("touchstart", (e) => {
+  if (popupBox.scrollTop <= 0) {
+    touchStartY = e.touches[0].clientY;
+    touchCurrentY = touchStartY;
+    isDragging = true;
+    popupBox.style.transition = "none";
+  }
+}, { passive: true });
+
+popupBox.addEventListener("touchmove", (e) => {
+  if (!isDragging) return;
+  
+  if (popupBox.scrollTop > 0) {
+    isDragging = false;
+    popupBox.style.transform = "";
+    return;
+  }
+  
+  touchCurrentY = e.touches[0].clientY;
+  const deltaY = touchCurrentY - touchStartY;
+  
+  if (deltaY >= 0) {
+    // preventDefault на первом же движении, иначе iOS заберёт жест под нативный скролл
+    if (e.cancelable) e.preventDefault();
+    popupBox.style.transform = deltaY > 0 ? `translateY(${deltaY}px)` : "";
+  } else {
+    popupBox.style.transform = "";
+  }
+}, { passive: false });
+
+popupBox.addEventListener("touchend", () => {
+  if (!isDragging) return;
+  isDragging = false;
+  
+  const deltaY = touchCurrentY - touchStartY;
+  popupBox.style.transition = "transform 0.22s cubic-bezier(0.2, 0.65, 0.25, 1)";
+  
+  if (deltaY > 100) {
+    popupBox.style.transform = "translateY(100%)";
+    setTimeout(() => {
+      closeKtPopup();
+      popupBox.style.transform = "";
+    }, 200);
+  } else {
+    popupBox.style.transform = "";
+  }
+  
+  touchStartY = 0;
+  touchCurrentY = 0;
+});
 
 document.addEventListener("click", (e) => {
   const cell = e.target.closest(".rt-total--clickable");
@@ -387,7 +454,20 @@ zachInput.select();
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js")
-      .then((reg) => console.log("Service Worker зарегистрирован:", reg.scope))
+      .then((reg) => {
+        console.log("Service Worker зарегистрирован:", reg.scope);
+        // Принудительно проверяем наличие обновлений при каждой загрузке страницы
+        reg.update();
+      })
       .catch((err) => console.error("Ошибка регистрации Service Worker:", err));
+  });
+
+  // Автоматически перезагружаем страницу, когда новый Service Worker активируется
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
 }
