@@ -81,9 +81,15 @@ class RedisRepository:
         await self._clients[background].flushdb()
         logger.info("Background DB %d flushed", background)
 
-    async def set_record(self, db: int, key: str, value: dict) -> None:
-        await self._clients[db].set(key, json.dumps(value, ensure_ascii=False))
-        logger.debug("SET db=%d  key=%s", db, key)
+    async def set_records(self, db: int, items: dict[str, dict]) -> None:
+        """Пакетная запись: все ключи одной пачкой через pipeline (один round-trip)."""
+        if not items:
+            return
+        pipe = self._clients[db].pipeline(transaction=False)
+        for key, value in items.items():
+            pipe.set(key, json.dumps(value, ensure_ascii=False))
+        await pipe.execute()
+        logger.debug("SET pipeline db=%d  keys=%d", db, len(items))
 
     # --- чтение для endpoints ------------------------------------------------
 

@@ -28,13 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 
-# Единый таймаут 30 с на connect/read/write/pool. Слабый сервер ВГУИТ медленно
-# ПРИНИМАЕТ соединения при конкурентном всплеске (очередь SYN), поэтому занижать
-# connect нельзя: проверено, connect=10 c валил Этап 2 штормом ConnectTimeout.
 TIMEOUT = httpx.Timeout(30.0)
-# Главный рычаг нагрузки на слабый сервер ВГУИТ. 18 перегружало его worker-пул
-# на тяжёлых Ved.aspx и давало шторм ReadTimeout — снижено до 12 (повышать нельзя).
-CONCURRENCY = 12
+CONCURRENCY = 12 # лучшее значение по итогам тестов
 RETRIES = 4           # запас попыток, чтобы потери ведомостей держались < 1%
 RETRY_BACKOFF = 2     # база экспоненциального бэкоффа (с)
 RETRY_MAX_DELAY = 20  # потолок задержки между попытками (с)
@@ -100,12 +95,22 @@ class ParserService:
     def __init__(self) -> None:
         self._client: httpx.AsyncClient | None = None
         self._sem = asyncio.Semaphore(CONCURRENCY)
+        self._ved_pool: asyncio.Queue[httpx.AsyncClient] = asyncio.Queue()
 
     async def __aenter__(self) -> "ParserService":
         self._client = httpx.AsyncClient(headers=HEADERS, follow_redirects=True, limits=LIMITS, timeout=TIMEOUT)
+        for _ in range(CONCURRENCY):
+            self._ved_pool.put_nowait(
+                httpx.AsyncClient(
+                    headers=HEADERS,
+                    follow_redirects=True,
+                    limits=httpx.Limits(max_connections=1, max_keepalive_connections=1),
+                    timeout=TIMEOUT,
+                )
+            )
         logger.debug(
-            "HTTP client opened  |  concurrency=%d  connect=%.0fs  read=%.0fs  retries=%d",
-            CONCURRENCY, TIMEOUT.connect, TIMEOUT.read, RETRIES,
+            "HTTP clients opened  |  ved pool=%d  concurrency=%d  connect=%.0fs  read=%.0fs  retries=%d",
+            CONCURRENCY, CONCURRENCY, TIMEOUT.connect, TIMEOUT.read, RETRIES,
         )
         return self
 
@@ -113,7 +118,9 @@ class ParserService:
         if self._client is not None:
             await self._client.aclose()
             self._client = None
-            logger.debug("HTTP client closed")
+        while not self._ved_pool.empty():
+            await self._ved_pool.get_nowait().aclose()
+        logger.debug("HTTP clients closed")
 
     @property
     def client(self) -> httpx.AsyncClient:
@@ -121,11 +128,14 @@ class ParserService:
             raise RuntimeError("ParserService используется вне async-контекста")
         return self._client
 
-    async def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
+    async def _request(
+        self, method: str, url: str, client: httpx.AsyncClient | None = None, **kwargs
+    ) -> httpx.Response:
         kwargs.setdefault("timeout", TIMEOUT)
+        http = client if client is not None else self.client
         for attempt in range(1, RETRIES + 1):
             try:
-                r = await self.client.request(method, url, **kwargs)
+                r = await http.request(method, url, **kwargs)
             except httpx.HTTPError as exc:
                 if attempt == RETRIES:
                     logger.error("Request %s %s failed after %d attempts: %r", method, url, RETRIES, exc)
@@ -192,7 +202,7 @@ class ParserService:
                         "ctl00$ContentPage$cmbSem": settings.parsing_semester,
                     }
                 )
-            urls = _parse_urls(html)
+            urls = await asyncio.to_thread(_parse_urls, html)
             logger.debug("Group %s -> %d vedomosts", grp["name"], len(urls))
             return urls
         except Exception as exc:
@@ -213,8 +223,8 @@ class ParserService:
                     "ctl00$ContentPage$cmbSem": settings.parsing_semester,
                 }
             )
-        fac_fields = _parse_viewstate(fac_html)
-        groups = _parse_select(fac_html, _GROUP_SELECT)
+        fac_fields = await asyncio.to_thread(_parse_viewstate, fac_html)
+        groups = await asyncio.to_thread(_parse_select, fac_html, _GROUP_SELECT)
         logger.debug("Faculty %s -> %d groups", fac["name"], len(groups))
 
         lists = await asyncio.gather(
@@ -230,8 +240,8 @@ class ParserService:
         """
         r = await self._request("GET", settings.rating_base_url)
         r.encoding = "windows-1251"
-        base_fields = _parse_viewstate(r.text)
-        faculties = _parse_select(r.text, _FAC_SELECT)
+        base_fields = await asyncio.to_thread(_parse_viewstate, r.text)
+        faculties = await asyncio.to_thread(_parse_select, r.text, _FAC_SELECT)
         logger.debug("Start collecting links  |  faculties: %d", len(faculties))
 
         per_faculty = await asyncio.gather(
@@ -259,11 +269,14 @@ class ParserService:
           * []    — ведомость нерабочая/пустая (HTTP != 200, нет маркера типа
             или в ней нет записей); это штатный пропуск, не потеря.
         """
+        client = await self._ved_pool.get()
         try:
-            r = await self._request("GET", url)
+            r = await self._request("GET", url, client=client)
         except httpx.HTTPError as exc:
             logger.warning("Failed to download vedomost %s: %r", url, exc)
             return None
+        finally:
+            self._ved_pool.put_nowait(client)
         # 429 после исчерпания ретраев — реальная потеря.
         if r.status_code == 429:
             logger.warning("Vedomost lost after retries (HTTP 429): %s", url)
@@ -273,6 +286,8 @@ class ParserService:
             logger.debug("Non-functional vedomost (HTTP %d): %s", r.status_code, url)
             return []
         r.encoding = "windows-1251"
-        records = parse_ved_html(r.text)
+        # bs4-разбор — CPU-bound; в потоке, чтобы не блокировать event loop
+        # (в нём же живёт FastAPI: синхронный разбор подвешивал API на время цикла).
+        records = await asyncio.to_thread(parse_ved_html, r.text)
         logger.debug("Parsed %d records from %s", len(records), url)
         return records

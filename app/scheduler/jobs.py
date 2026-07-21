@@ -97,9 +97,11 @@ async def run_parsing_cycle() -> None:
                         failed_veds += 1
                     elif records:
                         parsed_veds += 1
-                        for record in records:
-                            await repo.set_record(background_db, record_to_key(record), record.model_dump())
-                            total_records += 1
+                        await repo.set_records(
+                            background_db,
+                            {record_to_key(record): record.model_dump() for record in records},
+                        )
+                        total_records += len(records)
                     else:
                         empty_veds += 1
 
