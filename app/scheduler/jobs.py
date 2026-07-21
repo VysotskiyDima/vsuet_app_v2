@@ -1,11 +1,9 @@
 import asyncio
 from datetime import datetime, timedelta
 import logging
-import random
 import time
 
 from app.config import settings
-from app.logging_config import trace_ctx
 from app.repository.redis_repository import RedisRepository
 from app.services.parser_service import CONCURRENCY, ParserService
 
@@ -41,10 +39,6 @@ async def run_parsing_cycle() -> None:
         return
 
     async with _running:
-        # Генерируем 10-значный TRANSACTION-ID для трассировки логов планировщика
-        tx_id = str(random.randint(10**9, 10**10 - 1))
-        token = trace_ctx.set({"TRANSACTION-ID": tx_id})
-        
         t_start = time.monotonic()
         logger.info("Start parsing cycle")
 
@@ -144,4 +138,3 @@ async def run_parsing_cycle() -> None:
         finally:
             if repo is not None:
                 await repo.close()
-            trace_ctx.reset(token)
