@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends
 
 from app.entities.enums import VedType
 from app.entities.not_rating_ved_model import NotRatingVedModel
@@ -11,15 +11,7 @@ router = APIRouter(prefix="/rating", tags=["rating"])
 
 @router.get("/{zach_number}/zachet")
 async def zachet(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[RatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.ZACHET)
@@ -28,15 +20,7 @@ async def zachet(
 
 @router.get("/{zach_number}/ekzamen")
 async def ekzamen(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[RatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.EKZAMEN)
@@ -45,15 +29,7 @@ async def ekzamen(
 
 @router.get("/{zach_number}/vypusknaya-rabota")
 async def vypusknaya_rabota(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.VYPUSKNAYA_RABOTA)
@@ -62,15 +38,7 @@ async def vypusknaya_rabota(
 
 @router.get("/{zach_number}/gosekzamen")
 async def gosekzamen(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.GOSEKZAMEN)
@@ -79,15 +47,7 @@ async def gosekzamen(
 
 @router.get("/{zach_number}/kontrolnaya-rabota")
 async def kontrolnaya_rabota(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.KONTROLNAYA_RABOTA)
@@ -96,15 +56,7 @@ async def kontrolnaya_rabota(
 
 @router.get("/{zach_number}/kursovaya-rabota")
 async def kursovaya_rabota(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.KURSOVAYA_RABOTA)
@@ -113,15 +65,7 @@ async def kursovaya_rabota(
 
 @router.get("/{zach_number}/kursovoy-proekt")
 async def kursovoy_proekt(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.KURSOVOY_PROEKT)
@@ -130,15 +74,7 @@ async def kursovoy_proekt(
 
 @router.get("/{zach_number}/praktika")
 async def praktika(
-    zach_number: str = Path(
-        ...,
-        openapi_examples={
-            "default": {
-                "summary": "Sample gradebook",
-                "value": "247162",
-            }
-        },
-    ),
+    zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
 ) -> list[NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.PRAKTIKA)
