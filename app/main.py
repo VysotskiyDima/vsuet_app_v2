@@ -6,9 +6,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import Headers, MutableHeaders
 
 from app.config import settings
 from app.logging_config import print_banner, setup_logging, trace_ctx
@@ -29,42 +29,52 @@ log = get_logger(__name__)
 
 
 
-class TracingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Извлекаем или генерируем REQUEST-UUID
-        request_uuid = request.headers.get("X-Request-ID") or request.headers.get("X-Request-Uuid")
-        if not request_uuid:
-            request_uuid = uuid.uuid4().hex
+class TracingMiddleware:
+    """Один REQUEST-UUID на запрос: в контекст логов, в ответ, в access-лог.
 
-        # Извлекаем или генерируем CORRELATION-UUID
-        correlation_uuid = request.headers.get("X-Correlation-ID") or request.headers.get("X-Correlation-Uuid")
-        if not correlation_uuid:
-            correlation_uuid = uuid.uuid4().hex
+    Pure-ASGI, а не BaseHTTPMiddleware: тот выполняет приложение в отдельной
+    таске, из-за чего contextvars (наша trace_ctx) распространяются
+    непредсказуемо, а BackgroundTasks выполняются уже после сброса контекста
+    (см. обсуждения starlette#1729, starlette#2160). Correlation-ID не ведём:
+    сервис — монолит, вышестоящих систем, передающих свой ID, нет.
+    """
 
-        # Сохраняем идентификаторы в контекст логгера
-        token = trace_ctx.set({
-            "REQUEST-UUID": request_uuid,
-            "CORRELATION-UUID": correlation_uuid
-        })
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        # X-Request-ID уважаем, если пришёл (например, от nginx), иначе свой.
+        request_uuid = Headers(scope=scope).get("x-request-id") or uuid.uuid4().hex
+        token = trace_ctx.set({"REQUEST-UUID": request_uuid})
         start_time = time.perf_counter()
+        status_code = 500
+
+        async def send_with_request_id(message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+                MutableHeaders(scope=message)["X-Request-ID"] = request_uuid
+            await send(message)
+
         try:
-            response = await call_next(request)
+            await self.app(scope, receive, send_with_request_id)
             process_time = (time.perf_counter() - start_time) * 1000
             log.info(
                 "Request handled",
-                method=request.method, path=request.url.path,
-                status=response.status_code, ms=round(process_time, 2),
+                method=scope["method"], path=scope["path"],
+                status=status_code, ms=round(process_time, 2),
             )
-            response.headers["X-Request-ID"] = request_uuid
-            response.headers["X-Correlation-ID"] = correlation_uuid
-            return response
-        except Exception as e:
+        except Exception:
             process_time = (time.perf_counter() - start_time) * 1000
             log.exception(
                 "Unhandled exception during request processing",
-                method=request.method, path=request.url.path, ms=round(process_time, 2),
+                method=scope["method"], path=scope["path"], ms=round(process_time, 2),
             )
-            raise e
+            raise
         finally:
             trace_ctx.reset(token)
 
