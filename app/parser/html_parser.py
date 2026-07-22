@@ -8,7 +8,6 @@
 Отсутствующие значения заменяются строкой "-".
 """
 
-import logging
 import re
 
 from bs4 import BeautifulSoup
@@ -16,11 +15,12 @@ from bs4 import BeautifulSoup
 from app.entities.enums import RATING_VED_TYPES
 from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import ControlPoint, RatingVedModel, SubjectScore
+from app.logging_utils import get_logger
 
 
 
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 
@@ -187,7 +187,7 @@ def parse_ved_html(html: str) -> list[RatingVedModel] | list[NotRatingVedModel]:
 
     type_tag = soup.find("span", id="ucVedBox_lblTypeVed")
     if not type_tag or not type_tag.get_text(strip=True):
-        logger.debug("Skip: no ucVedBox_lblTypeVed (non-functional vedomost)")
+        log.debug("Skip: no ucVedBox_lblTypeVed (non-functional vedomost)")
         return []
 
     ved_type = type_tag.get_text(strip=True)
@@ -201,15 +201,12 @@ def parse_ved_html(html: str) -> list[RatingVedModel] | list[NotRatingVedModel]:
     is_rating =ved_type in RATING_VED_TYPES and has_kt and table is not None
 
     fmt = "reitingoviy" if is_rating else "otsenochniy"
-    logger.debug(
-        "Parsing vedomost: type=%s | subject=%s | format=%s | rows=%d",
-        ved_type, subject_name, fmt, len(rows),
-    )
+    log.debug("Parsing vedomost", type=ved_type, subject=subject_name, format=fmt, rows=len(rows))
 
     if is_rating:
         records = _parse_rating(table, rows, ved_type, subject_name)
     else:
         records = _parse_grade(rows, ved_type, subject_name)
 
-    logger.debug("Parsing result: %d records (%s / %s)", len(records), ved_type, subject_name)
+    log.debug("Parsing result", records=len(records), type=ved_type, subject=subject_name)
     return records

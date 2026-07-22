@@ -1,6 +1,5 @@
 """Точка входа FastAPI: подключает роутер и запускает планировщик парсинга."""
 
-import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -11,8 +10,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.banner import print_banner
 from app.config import settings
 from app.logging_config import setup_logging, trace_ctx
+from app.logging_utils import get_logger
 from app.repository.redis_repository import RedisRepository
 from app.routers import rating_router, students_router
 from app.scheduler.jobs import run_parsing_cycle
@@ -22,8 +23,9 @@ from app.services.student_service import StudentService
 
 
 
+print_banner()
 setup_logging()
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 
@@ -49,23 +51,19 @@ class TracingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             process_time = (time.perf_counter() - start_time) * 1000
-            logger.info(
-                "%s %s - %d in %.2f ms",
-                request.method,
-                request.url.path,
-                response.status_code,
-                process_time,
+            log.info(
+                "Request handled",
+                method=request.method, path=request.url.path,
+                status=response.status_code, ms=round(process_time, 2),
             )
             response.headers["X-Request-ID"] = request_uuid
             response.headers["X-Correlation-ID"] = correlation_uuid
             return response
         except Exception as e:
             process_time = (time.perf_counter() - start_time) * 1000
-            logger.exception(
-                "Unhandled exception during request processing: %s %s (failed in %.2f ms)",
-                request.method,
-                request.url.path,
-                process_time,
+            log.exception(
+                "Unhandled exception during request processing",
+                method=request.method, path=request.url.path, ms=round(process_time, 2),
             )
             raise e
         finally:
@@ -83,12 +81,8 @@ async def _is_db_empty(repo: RedisRepository) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(
-        "Application start up  |  year=%s  semester=%s",
-        settings.parsing_year,
-        settings.parsing_semester,
-    )
-    logger.info("Swagger UI documentation is available at: http://localhost:8000/docs")
+    log.info("Application start up", year=settings.parsing_year, semester=settings.parsing_semester)
+    log.info("Swagger UI documentation is available at: http://localhost:8000/docs")
 
     app.state.repo = RedisRepository()
     app.state.rating_service = RatingService(app.state.repo)
@@ -98,18 +92,17 @@ async def lifespan(app: FastAPI):
     active_db = await app.state.repo.get_active_db()
     active_client = app.state.repo._clients[active_db]
     db_size = await active_client.dbsize()
-    logger.info("Active database: DB %d  |  Keys count: %d", active_db, db_size)
+    log.info("Active database", db=active_db, keys=db_size)
 
     # Если обе data-БД пусты — первый запуск парсинга немедленно.
     empty = await _is_db_empty(app.state.repo)
     first_run = datetime.now() if empty else None
     if empty:
-        logger.info("Redis is empty — parsing cycle will run immediately")
+        log.info("Redis is empty — parsing cycle will run immediately")
     else:
-        logger.info(
-            "Database already contains data — immediate parsing cycle skipped. "
-            "Next scheduled run will start in %d minutes",
-            settings.scheduler_interval_minutes,
+        log.info(
+            "Database already contains data — immediate parsing cycle skipped",
+            next_run_in_min=settings.scheduler_interval_minutes,
         )
 
     scheduler = AsyncIOScheduler()
@@ -124,16 +117,14 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
     app.state.scheduler = scheduler
-    logger.info(
-        "Scheduler started, interval=%d min", settings.scheduler_interval_minutes
-    )
+    log.info("Scheduler started", interval_min=settings.scheduler_interval_minutes)
 
     try:
         yield
     finally:
         scheduler.shutdown(wait=False)
         await app.state.repo.close()
-        logger.info("Application stopped")
+        log.info("Application stopped")
 
 
 app = FastAPI(title="VSUET Rating Backend", lifespan=lifespan)

@@ -1,15 +1,14 @@
 """Бизнес-логика чтения рейтинговых данных студента из активной БД."""
 
-import logging
-
 from fastapi import Request
 
 from app.entities.enums import RATING_VED_TYPES, NOT_RATING_VED_TYPES, VedType
 from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import RatingVedModel
+from app.logging_utils import get_logger
 from app.repository.redis_repository import RedisRepository
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class RatingService:
@@ -22,9 +21,9 @@ class RatingService:
         """Записи студента заданного типа ведомости (всегда список, м.б. пустой)."""
         prefix = f"{zach_number}:{ved_type.value}:"
         records = await self._repo.get_by_prefix(prefix)
-        logger.debug(
-            "get_by_ved_type(%s, %s) → %d records",
-            zach_number, ved_type.value, len(records),
+        log.debug(
+            "get_by_ved_type",
+            zach_number=zach_number, ved_type=ved_type.value, records=len(records),
         )
 
         if ved_type in RATING_VED_TYPES:

@@ -1,11 +1,11 @@
 import json
-import logging
 
 import redis.asyncio as redis
 
 from app.config import settings
+from app.logging_utils import get_logger
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 _ACTIVE_PTR_KEY = "active_db"
 _SCAN_COUNT = 500
@@ -39,19 +39,17 @@ class RedisRepository:
             db=settings.redis_meta_db,
             decode_responses=True,
         )
-        logger.debug(
-            "Redis clients created  |  host=%s:%s  data_dbs=%s  meta_db=%s",
-            settings.redis_host,
-            settings.redis_port,
-            self._data_dbs,
-            settings.redis_meta_db,
+        log.debug(
+            "Redis clients created",
+            host=f"{settings.redis_host}:{settings.redis_port}",
+            data_dbs=self._data_dbs, meta_db=settings.redis_meta_db,
         )
 
     async def close(self) -> None:
         for client in self._clients.values():
             await client.aclose()
         await self._meta.aclose()
-        logger.debug("Redis clients closed")
+        log.debug("Redis clients closed")
 
     # --- управление активной/фоновой БД -------------------------------------
 
@@ -70,16 +68,16 @@ class RedisRepository:
         """Меняет активную и фоновую БД ролями (обновляет указатель)."""
         background = await self.get_background_db()
         await self._meta.set(_ACTIVE_PTR_KEY, background)
-        logger.info(
-            "Active DB switched: %d -> %d",
-            self._data_dbs[0] if background == self._data_dbs[1] else self._data_dbs[1],
-            background,
+        log.info(
+            "Active DB switched",
+            old=self._data_dbs[0] if background == self._data_dbs[1] else self._data_dbs[1],
+            new=background,
         )
 
     async def flush_background(self) -> None:
         background = await self.get_background_db()
         await self._clients[background].flushdb()
-        logger.info("Background DB %d flushed", background)
+        log.info("Background DB flushed", db=background)
 
     async def set_records(self, db: int, items: dict[str, dict]) -> None:
         """Пакетная запись: все ключи одной пачкой через pipeline (один round-trip)."""
@@ -89,7 +87,7 @@ class RedisRepository:
         for key, value in items.items():
             pipe.set(key, json.dumps(value, ensure_ascii=False))
         await pipe.execute()
-        logger.debug("SET pipeline db=%d  keys=%d", db, len(items))
+        log.debug("SET pipeline", db=db, keys=len(items))
 
     # --- чтение для endpoints ------------------------------------------------
 
@@ -104,11 +102,11 @@ class RedisRepository:
         async for key in client.scan_iter(match=pattern, count=_SCAN_COUNT):
             keys.append(key)
         if not keys:
-            logger.debug("get_by_prefix(%s) → 0 keys", prefix)
+            log.debug("get_by_prefix: no keys", prefix=prefix)
             return []
         values = await client.mget(keys)
         result = [json.loads(v) for v in values if v is not None]
-        logger.debug("get_by_prefix(%s) → %d records", prefix, len(result))
+        log.debug("get_by_prefix", prefix=prefix, records=len(result))
         return result
 
     async def exists_with_prefix(self, prefix: str) -> bool:
@@ -116,7 +114,7 @@ class RedisRepository:
         client = await self._active_client()
         pattern = _escape_glob(prefix) + "*"
         async for _ in client.scan_iter(match=pattern, count=_SCAN_COUNT):
-            logger.debug("exists_with_prefix(%s) → True", prefix)
+            log.debug("exists_with_prefix", prefix=prefix, exists=True)
             return True
-        logger.debug("exists_with_prefix(%s) → False", prefix)
+        log.debug("exists_with_prefix", prefix=prefix, exists=False)
         return False

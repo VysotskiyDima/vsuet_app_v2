@@ -4,21 +4,27 @@
 расписанию, а вся логика цикла и его метрики живут здесь. Зависимостями
 (ParserService, RedisRepository) владеет вызывающий — пайплайн не открывает
 и не закрывает ресурсы, поэтому легко тестируется на подменах.
+
+Границы этапов оформлены контекст-менеджером _stage: он логирует начало и
+длительность этапа и запоминает имя для PipelineError — бизнес-код этапов
+не содержит журнальной обвязки.
 """
 
 import asyncio
-import logging
 import time
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from pydantic import BaseModel
 
 from app.config import settings
 from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import RatingVedModel
+from app.logging_utils import get_logger
 from app.repository.redis_repository import RedisRepository
 from app.services.parser_service import CONCURRENCY, ParserService
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 VedRecord = RatingVedModel | NotRatingVedModel
 
@@ -51,6 +57,14 @@ class PipelineReport(BaseModel):
     def loss_pct(self) -> float:
         return self.failed_veds / self.urls * 100 if self.urls else 0.0
 
+    def summary(self) -> dict:
+        """Поля отчёта в виде, пригодном для лога: округлённые тайминги и loss_pct."""
+        data = self.model_dump()
+        for key in ("links_s", "parse_s", "total_s"):
+            data[key] = round(data[key], 1)
+        data["loss_pct"] = round(self.loss_pct, 2)
+        return data
+
 
 class PipelineError(RuntimeError):
     """Ошибка цикла с привязкой к этапу, на котором он произошёл."""
@@ -64,34 +78,42 @@ class ParsingPipeline:
     def __init__(self, parser: ParserService, repo: RedisRepository) -> None:
         self._parser = parser
         self._repo = repo
+        self._stage_name = "initialization"
+
+    @asynccontextmanager
+    async def _stage(self, num: int, title: str) -> AsyncIterator[None]:
+        """Граница этапа: лог начала/длительности + имя этапа для PipelineError."""
+        self._stage_name = f"Stage {num}: {title}"
+        log.info("%s — started", self._stage_name)
+        t = time.monotonic()
+        yield
+        log.info("%s — completed", self._stage_name, duration_s=round(time.monotonic() - t, 1))
 
     async def run(self) -> PipelineReport:
         """Выполняет цикл целиком; на любой ошибке поднимает PipelineError.
 
-        Если цикл дошёл до конца, отчёт полностью заполнен; если сайт недоступен,
-        отчёт возвращается с site_available=False и swap не выполняется.
+        Если сайт недоступен, отчёт возвращается с site_available=False
+        и дальнейшие этапы не выполняются.
         """
         report = PipelineReport()
         t_start = time.monotonic()
-        stage = "Stage 1: Checking site availability"
         try:
-            logger.info("Stage 1: Checking site %s availability", settings.rating_base_url)
-            if not await self._parser.check_site_availability():
-                logger.warning("Site %s is unavailable", settings.rating_base_url)
+            async with self._stage(1, "checking site availability"):
+                report.site_available = await self._parser.check_site_availability()
+            if not report.site_available:
+                log.warning("Site is unavailable, cycle skipped", url=settings.rating_base_url)
                 return report
-            report.site_available = True
-            logger.info("Stage 1 success: site %s available", settings.rating_base_url)
 
-            stage = "Stage 2: Clearing background DB and collecting links"
-            urls, background_db = await self._collect_links(report)
+            async with self._stage(2, "clearing background DB and collecting links"):
+                urls, background_db = await self._collect_links(report)
 
-            stage = "Stage 3: Parsing records and saving to background DB"
-            await self._parse_and_save(urls, background_db, report)
+            async with self._stage(3, "parsing records and saving to background DB"):
+                await self._parse_and_save(urls, background_db, report)
 
-            stage = "Stage 4: Switching active database"
-            await self._swap(report)
+            async with self._stage(4, "switching active database"):
+                await self._swap(report)
         except Exception as exc:
-            raise PipelineError(stage, exc) from exc
+            raise PipelineError(self._stage_name, exc) from exc
         finally:
             report.total_s = time.monotonic() - t_start
         return report
@@ -99,7 +121,6 @@ class ParsingPipeline:
     # --- этапы ---
 
     async def _collect_links(self, report: PipelineReport) -> tuple[list[str], int]:
-        logger.info("Stage 2: Clearing background DB and collecting vedomost URLs")
         background_db = await self._repo.get_background_db()
         await self._repo.flush_background()
 
@@ -109,14 +130,9 @@ class ParsingPipeline:
         report.groups = len(links)
         report.urls = len(urls)
         report.links_s = time.monotonic() - t
-        logger.info(
-            "Stage 2 collect ved links completed in %.1f s | groups: %d | links: %d",
-            report.links_s, report.groups, report.urls,
-        )
         return urls, background_db
 
     async def _parse_and_save(self, urls: list[str], background_db: int, report: PipelineReport) -> None:
-        logger.info("Stage 3: Parsing of %d URLs with concurrency=%d", len(urls), CONCURRENCY)
         sem = asyncio.Semaphore(CONCURRENCY)
         completed = 0
 
@@ -138,25 +154,19 @@ class ParsingPipeline:
 
             completed += 1
             if completed % 250 == 0 or completed == len(urls):
-                logger.info(
-                    "Parsing progress: %d/%d vedomosts processed (%.1f%%) | records in DB: %d",
-                    completed, len(urls), (completed / len(urls) * 100), report.total_records,
+                log.info(
+                    "Parsing progress",
+                    done=f"{completed}/{len(urls)}",
+                    pct=round(completed / len(urls) * 100, 1),
+                    records=report.total_records,
                 )
 
         t = time.monotonic()
         await asyncio.gather(*(handle(url) for url in urls))
         report.parse_s = time.monotonic() - t
-        logger.info(
-            "Stage 3 parse and save completed in %.1f s | parsed veds: %d | empty veds: %d | failed veds: %d (%.2f%% loss) | total records in DB: %d",
-            report.parse_s, report.parsed_veds, report.empty_veds,
-            report.failed_veds, report.loss_pct, report.total_records,
-        )
 
     async def _swap(self, report: PipelineReport) -> None:
-        logger.info("Stage 4: Swapping active and background databases...")
-        t = time.monotonic()
         await self._repo.switch_active_db()
         # Очищаем новую фоновую БД после переключения (высвобождаем память Redis)
         await self._repo.flush_background()
         report.swap_performed = True
-        logger.info("Stage 4 switch active db completed in %.1f s", time.monotonic() - t)

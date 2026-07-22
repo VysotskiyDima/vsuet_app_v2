@@ -10,7 +10,6 @@
 """
 
 import asyncio
-import logging
 import random
 import re
 
@@ -18,12 +17,13 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.config import settings
+from app.logging_utils import get_logger
 from app.parser.html_parser import parse_ved_html
 
 
 
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 
@@ -108,9 +108,10 @@ class ParserService:
                     timeout=TIMEOUT,
                 )
             )
-        logger.debug(
-            "HTTP clients opened  |  ved pool=%d  concurrency=%d  connect=%.0fs  read=%.0fs  retries=%d",
-            CONCURRENCY, CONCURRENCY, TIMEOUT.connect, TIMEOUT.read, RETRIES,
+        log.debug(
+            "HTTP clients opened",
+            ved_pool=CONCURRENCY, concurrency=CONCURRENCY,
+            connect_s=TIMEOUT.connect, read_s=TIMEOUT.read, retries=RETRIES,
         )
         return self
 
@@ -120,7 +121,7 @@ class ParserService:
             self._client = None
         while not self._ved_pool.empty():
             await self._ved_pool.get_nowait().aclose()
-        logger.debug("HTTP clients closed")
+        log.debug("HTTP clients closed")
 
     @property
     def client(self) -> httpx.AsyncClient:
@@ -138,28 +139,27 @@ class ParserService:
                 r = await http.request(method, url, **kwargs)
             except httpx.HTTPError as exc:
                 if attempt == RETRIES:
-                    logger.error("Request %s %s failed after %d attempts: %r", method, url, RETRIES, exc)
+                    log.error("Request failed", method=method, url=url, attempts=RETRIES, error=repr(exc))
                     raise
                 delay = _backoff_delay(attempt)
-                logger.warning(
-                    "%s %s  attempt %d/%d  error: %r  retry in %.1fs",
-                    method, url, attempt, RETRIES, exc, delay,
+                log.warning(
+                    "Request retry",
+                    method=method, url=url, attempt=f"{attempt}/{RETRIES}",
+                    error=repr(exc), delay_s=round(delay, 1),
                 )
                 await asyncio.sleep(delay)
                 continue
 
             if r.status_code == 429:
                 if attempt == RETRIES:
-                    logger.warning("429 %s — retry limit exceeded", url)
+                    log.warning("429 retry limit exceeded", url=url)
                     return r
                 retry_after = r.headers.get("Retry-After")
                 try:
                     delay = float(retry_after) if retry_after is not None else _backoff_delay(attempt)
                 except ValueError:
                     delay = _backoff_delay(attempt)
-                logger.warning(
-                    "429 %s  attempt %d/%d  delay %.1fs", url, attempt, RETRIES, delay
-                )
+                log.warning("429 received", url=url, attempt=f"{attempt}/{RETRIES}", delay_s=round(delay, 1))
                 await asyncio.sleep(delay)
                 continue
 
@@ -178,13 +178,13 @@ class ParserService:
         try:
             r = await self._request("GET", settings.rating_base_url)
         except httpx.HTTPError:
-            logger.warning("Site is unavailable (network error)")
+            log.warning("Site is unavailable (network error)")
             return False
         available = r.status_code == 200
         if available:
-            logger.debug("Site is available (HTTP %d)", r.status_code)
+            log.debug("Site is available", status=r.status_code)
         else:
-            logger.warning("Site returned HTTP %d", r.status_code)
+            log.warning("Site is unavailable", status=r.status_code)
         return available
 
 
@@ -203,10 +203,10 @@ class ParserService:
                     }
                 )
             urls = await asyncio.to_thread(_parse_urls, html)
-            logger.debug("Group %s -> %d vedomosts", grp["name"], len(urls))
+            log.debug("Group vedomosts collected", group=grp["name"], count=len(urls))
             return urls
         except Exception as exc:
-            logger.error("Error collecting vedomosts for group %s: %s", grp["name"], exc)
+            log.error("Error collecting group vedomosts", group=grp["name"], error=repr(exc))
             return []
 
 
@@ -225,7 +225,7 @@ class ParserService:
             )
         fac_fields = await asyncio.to_thread(_parse_viewstate, fac_html)
         groups = await asyncio.to_thread(_parse_select, fac_html, _GROUP_SELECT)
-        logger.debug("Faculty %s -> %d groups", fac["name"], len(groups))
+        log.debug("Faculty groups collected", faculty=fac["name"], count=len(groups))
 
         lists = await asyncio.gather(
             *(self._group_urls(fac_fields, fac, grp) for grp in groups)
@@ -242,7 +242,7 @@ class ParserService:
         r.encoding = "windows-1251"
         base_fields = await asyncio.to_thread(_parse_viewstate, r.text)
         faculties = await asyncio.to_thread(_parse_select, r.text, _FAC_SELECT)
-        logger.debug("Start collecting links  |  faculties: %d", len(faculties))
+        log.debug("Start collecting links", faculties=len(faculties))
 
         per_faculty = await asyncio.gather(
             *(self._faculty_groups(base_fields, fac) for fac in faculties)
@@ -254,9 +254,7 @@ class ParserService:
                 result.setdefault(group_name, []).extend(urls)
 
         total_urls = sum(len(v) for v in result.values())
-        logger.debug(
-            "Link collection completed  |  groups: %d  vedomosts: %d", len(result), total_urls
-        )
+        log.debug("Link collection completed", groups=len(result), vedomosts=total_urls)
         return result
 
 
@@ -273,21 +271,21 @@ class ParserService:
         try:
             r = await self._request("GET", url, client=client)
         except httpx.HTTPError as exc:
-            logger.warning("Failed to download vedomost %s: %r", url, exc)
+            log.warning("Failed to download vedomost", url=url, error=repr(exc))
             return None
         finally:
             self._ved_pool.put_nowait(client)
         # 429 после исчерпания ретраев — реальная потеря.
         if r.status_code == 429:
-            logger.warning("Vedomost lost after retries (HTTP 429): %s", url)
+            log.warning("Vedomost lost after retries (HTTP 429)", url=url)
             return None
         # Ранний признак нерабочей ведомости — статус 500 (и любой иной не-200).
         if r.status_code != 200:
-            logger.debug("Non-functional vedomost (HTTP %d): %s", r.status_code, url)
+            log.debug("Non-functional vedomost", status=r.status_code, url=url)
             return []
         r.encoding = "windows-1251"
         # bs4-разбор — CPU-bound; в потоке, чтобы не блокировать event loop
         # (в нём же живёт FastAPI: синхронный разбор подвешивал API на время цикла).
         records = await asyncio.to_thread(parse_ved_html, r.text)
-        logger.debug("Parsed %d records from %s", len(records), url)
+        log.debug("Vedomost parsed", records=len(records), url=url)
         return records

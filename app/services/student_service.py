@@ -1,14 +1,10 @@
 """Бизнес-логика чтения данных студента из активной БД."""
 
-import logging
-
 from fastapi import Request
 
 
 from app.entities.student_exists_model import StudentExistsModel
 from app.repository.redis_repository import RedisRepository
-
-logger = logging.getLogger(__name__)
 
 
 class StudentService:
