@@ -3,9 +3,6 @@ from pydantic import BaseModel
 from app.entities.enums import VedType
 
 
-
-
-
 class SubjectScore(BaseModel):
     score: int | str
     weight: int | str

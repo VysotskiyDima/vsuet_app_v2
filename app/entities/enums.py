@@ -1,19 +1,10 @@
 from enum import Enum
-from typing import Annotated
-
-from pydantic import Field
 
 
 class VedType(str, Enum):
-    """Типы ведомостей ровно в том написании, в каком приходят с сайта.
-
-    Значение участвует в ключе Redis и в сравнении типов — менять/нормализовать
-    написание нельзя (в т.ч. «Выпуская работа» — без «к», это написание источника).
-    """
-
     ZACHET = "Зачет"
     EKZAMEN = "Экзамен"
-    VYPUSKNAYA_RABOTA = "Выпуская работа"
+    VYPUSKNAYA_RABOTA = "Выпуская работа" # «Выпуская работа» — без «н», это написание источника
     GOSEKZAMEN = "ГосЭкзамен"
     KONTROLNAYA_RABOTA = "Контрольная работа"
     KURSOVAYA_RABOTA = "Курсовая работа"
