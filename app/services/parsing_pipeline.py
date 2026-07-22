@@ -22,7 +22,7 @@ from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import RatingVedModel
 from app.logging_utils import get_logger
 from app.repository.redis_repository import RedisRepository
-from app.services.parser_service import CONCURRENCY, ParserService
+from app.services.parser_service import ParserService
 
 log = get_logger(__name__)
 
@@ -133,7 +133,7 @@ class ParsingPipeline:
         return urls, background_db
 
     async def _parse_and_save(self, urls: list[str], background_db: int, report: PipelineReport) -> None:
-        sem = asyncio.Semaphore(CONCURRENCY)
+        sem = asyncio.Semaphore(settings.scraper.concurrency)
         completed = 0
 
         async def handle(url: str) -> None:

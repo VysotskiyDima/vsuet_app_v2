@@ -48,12 +48,23 @@ class SchedulerSettings(BaseSettings):
 
 
 class RatingSiteSettings(BaseSettings):
-    """URL-ы сайта рейтинга ВГУИТ."""
+    """URL-ы и кодировка сайта рейтинга ВГУИТ."""
 
     model_config = {**_ENV, "env_prefix": "RATING_"}
 
     base_url: str = "https://rating.vsuet.ru/web/ved/Default.aspx"
     ved_url: str = "https://rating.vsuet.ru/web/ved/Ved.aspx"
+    encoding: str = "windows-1251"
+
+
+class HtmlFormSettings(BaseModel):
+    """Имена ASP.NET-контролов формы Default.aspx (разметка сайта)."""
+
+    faculty_select: str = "ctl00$ContentPage$cmbFacultets"
+    group_select: str = "ctl00$ContentPage$cmbGroups"
+    years_select: str = "ctl00$ContentPage$cmbYears"
+    semester_select: str = "ctl00$ContentPage$cmbSem"
+    grid_id_pattern: str = "Grid"  # id таблицы со ссылками на ведомости
 
 
 class ScraperSettings(BaseModel):
@@ -134,6 +145,7 @@ class Settings(BaseModel):
     site: RatingSiteSettings = Field(default_factory=RatingSiteSettings)
     scraper: ScraperSettings = Field(default_factory=ScraperSettings)
     html_ved: HtmlVedSettings = Field(default_factory=HtmlVedSettings)
+    html_form: HtmlFormSettings = Field(default_factory=HtmlFormSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
 
 

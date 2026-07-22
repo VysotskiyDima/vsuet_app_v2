@@ -1,12 +1,10 @@
 """ParserService — взаимодействие с rating.vsuet.ru.
 
-Каркас обхода ASP.NET WebForms взят из приложенного parser.py: скрытые поля
-(__VIEWSTATE и пр.), POST через __EVENTTARGET, конкурентный обход факультетов →
-групп → ведомостей под общим семафором, ретраи при сетевых ошибках и 429,
-кодировка windows-1251. Год/семестр берутся из настроек (env).
-
-ВНИМАНИЕ по лимитам: CONCURRENCY и параметры ретраев подобраны как безопасный
-предел для слабого сервера ВГУИТ — повышать нельзя.
+Каркас обхода ASP.NET WebForms: скрытые поля (__VIEWSTATE и пр.), POST через
+__EVENTTARGET, конкурентный обход факультетов → групп → ведомостей под общим
+семафором, ретраи при сетевых ошибках и 429. Весь тюнинг (конкурентность,
+таймауты, ретраи) и разметка сайта — в config: ScraperSettings, HtmlFormSettings,
+RatingSiteSettings; здесь только логика обхода.
 """
 
 import asyncio
@@ -28,21 +26,6 @@ log = get_logger(__name__)
 
 
 
-# Тюнинг и его обоснование живут в config.ScraperSettings — здесь только производные.
-_SCRAPER = settings.scraper
-TIMEOUT = httpx.Timeout(_SCRAPER.timeout_s)
-CONCURRENCY = _SCRAPER.concurrency
-RETRIES = _SCRAPER.retries
-RETRY_BACKOFF = _SCRAPER.retry_backoff_s
-RETRY_MAX_DELAY = _SCRAPER.retry_max_delay_s
-
-LIMITS = httpx.Limits(max_connections=CONCURRENCY, max_keepalive_connections=CONCURRENCY)
-HEADERS = {"User-Agent": _SCRAPER.user_agent, "Referer": settings.site.base_url}
-
-_FAC_SELECT = "ctl00$ContentPage$cmbFacultets"
-_GROUP_SELECT = "ctl00$ContentPage$cmbGroups"
-
-
 def _backoff_delay(attempt: int) -> float:
     """Экспоненциальный бэкофф с полным джиттером.
 
@@ -50,7 +33,8 @@ def _backoff_delay(attempt: int) -> float:
     без джиттера ретраятся синхронно и снова перегружают сервер. Случайная
     задержка из [0, base] размазывает повторы во времени.
     """
-    base = min(RETRY_BACKOFF * (2 ** (attempt - 1)), RETRY_MAX_DELAY)
+    cfg = settings.scraper
+    base = min(cfg.retry_backoff_s * (2 ** (attempt - 1)), cfg.retry_max_delay_s)
     return random.uniform(0, base)
 
 
@@ -80,7 +64,7 @@ def _parse_select(html: str, name: str) -> list[dict]:
 
 def _parse_urls(html: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
-    table = soup.find("table", {"id": re.compile(r"Grid")})
+    table = soup.find("table", {"id": re.compile(settings.html_form.grid_id_pattern)})
     if not table:
         return []
     urls = []
@@ -91,29 +75,56 @@ def _parse_urls(html: str) -> list[str]:
     return urls
 
 
+def _form_data(event_target: str, viewstate: dict, fac_id: str, group_id: str) -> dict:
+    """POST-форма Default.aspx: событие + viewstate + текущие значения селектов."""
+    form = settings.html_form
+    return {
+        "__EVENTTARGET": event_target,
+        "__EVENTARGUMENT": "",
+        **viewstate,
+        form.faculty_select: fac_id,
+        form.group_select: group_id,
+        form.years_select: settings.parsing.year,
+        form.semester_select: settings.parsing.semester,
+    }
+
+
 
 
 class ParserService:
     def __init__(self) -> None:
         self._client: httpx.AsyncClient | None = None
-        self._sem = asyncio.Semaphore(CONCURRENCY)
+        self._sem = asyncio.Semaphore(settings.scraper.concurrency)
+        # Пул клиентов для скачивания ведомостей. ASP.NET сериализует запросы
+        # ОДНОЙ сессии (lock на ASP.NET_SessionId): через общий клиент
+        # «конкурентные» GET выполняются сервером по одному. Отдельный клиент =
+        # отдельная сессия; клиент выдаётся ровно одной корутине за раз, поэтому
+        # внутри сессии конкуренции нет, а между сессиями сервер параллелит.
         self._ved_pool: asyncio.Queue[httpx.AsyncClient] = asyncio.Queue()
 
     async def __aenter__(self) -> "ParserService":
-        self._client = httpx.AsyncClient(headers=HEADERS, follow_redirects=True, limits=LIMITS, timeout=TIMEOUT)
-        for _ in range(CONCURRENCY):
+        cfg = settings.scraper
+        timeout = httpx.Timeout(cfg.timeout_s)
+        headers = {"User-Agent": cfg.user_agent, "Referer": settings.site.base_url}
+        self._client = httpx.AsyncClient(
+            headers=headers,
+            follow_redirects=True,
+            limits=httpx.Limits(max_connections=cfg.concurrency, max_keepalive_connections=cfg.concurrency),
+            timeout=timeout,
+        )
+        for _ in range(cfg.concurrency):
             self._ved_pool.put_nowait(
                 httpx.AsyncClient(
-                    headers=HEADERS,
+                    headers=headers,
                     follow_redirects=True,
                     limits=httpx.Limits(max_connections=1, max_keepalive_connections=1),
-                    timeout=TIMEOUT,
+                    timeout=timeout,
                 )
             )
         log.debug(
             "HTTP clients opened",
-            ved_pool=CONCURRENCY, concurrency=CONCURRENCY,
-            connect_s=TIMEOUT.connect, read_s=TIMEOUT.read, retries=RETRIES,
+            ved_pool=cfg.concurrency, concurrency=cfg.concurrency,
+            timeout_s=cfg.timeout_s, retries=cfg.retries,
         )
         return self
 
@@ -134,26 +145,26 @@ class ParserService:
     async def _request(
         self, method: str, url: str, client: httpx.AsyncClient | None = None, **kwargs
     ) -> httpx.Response:
-        kwargs.setdefault("timeout", TIMEOUT)
+        retries = settings.scraper.retries
         http = client if client is not None else self.client
-        for attempt in range(1, RETRIES + 1):
+        for attempt in range(1, retries + 1):
             try:
                 r = await http.request(method, url, **kwargs)
             except httpx.HTTPError as exc:
-                if attempt == RETRIES:
-                    log.error("Request failed", method=method, url=url, attempts=RETRIES, error=repr(exc))
+                if attempt == retries:
+                    log.error("Request failed", method=method, url=url, attempts=retries, error=repr(exc))
                     raise
                 delay = _backoff_delay(attempt)
                 log.warning(
                     "Request retry",
-                    method=method, url=url, attempt=f"{attempt}/{RETRIES}",
+                    method=method, url=url, attempt=f"{attempt}/{retries}",
                     error=repr(exc), delay_s=round(delay, 1),
                 )
                 await asyncio.sleep(delay)
                 continue
 
             if r.status_code == 429:
-                if attempt == RETRIES:
+                if attempt == retries:
                     log.warning("429 retry limit exceeded", url=url)
                     return r
                 retry_after = r.headers.get("Retry-After")
@@ -161,7 +172,7 @@ class ParserService:
                     delay = float(retry_after) if retry_after is not None else _backoff_delay(attempt)
                 except ValueError:
                     delay = _backoff_delay(attempt)
-                log.warning("429 received", url=url, attempt=f"{attempt}/{RETRIES}", delay_s=round(delay, 1))
+                log.warning("429 received", url=url, attempt=f"{attempt}/{retries}", delay_s=round(delay, 1))
                 await asyncio.sleep(delay)
                 continue
 
@@ -170,7 +181,7 @@ class ParserService:
 
     async def _post(self, data: dict) -> str:
         r = await self._request("POST", settings.site.base_url, data=data)
-        r.encoding = "windows-1251"
+        r.encoding = settings.site.encoding
         return r.text
 
     # --- публичные методы ---
@@ -194,15 +205,7 @@ class ParserService:
         try:
             async with self._sem:
                 html = await self._post(
-                    {
-                        "__EVENTTARGET": _GROUP_SELECT,
-                        "__EVENTARGUMENT": "",
-                        **fac_fields,
-                        _FAC_SELECT: fac["id"],
-                        _GROUP_SELECT: grp["id"],
-                        "ctl00$ContentPage$cmbYears": settings.parsing.year,
-                        "ctl00$ContentPage$cmbSem": settings.parsing.semester,
-                    }
+                    _form_data(settings.html_form.group_select, fac_fields, fac["id"], grp["id"])
                 )
             urls = await asyncio.to_thread(_parse_urls, html)
             log.debug("Group vedomosts collected", group=grp["name"], count=len(urls))
@@ -215,18 +218,10 @@ class ParserService:
     async def _faculty_groups(self, base_fields: dict, fac: dict) -> dict[str, list[str]]:
         async with self._sem:
             fac_html = await self._post(
-                {
-                    "__EVENTTARGET": _FAC_SELECT,
-                    "__EVENTARGUMENT": "",
-                    **base_fields,
-                    _FAC_SELECT: fac["id"],
-                    _GROUP_SELECT: "",
-                    "ctl00$ContentPage$cmbYears": settings.parsing.year,
-                    "ctl00$ContentPage$cmbSem": settings.parsing.semester,
-                }
+                _form_data(settings.html_form.faculty_select, base_fields, fac["id"], "")
             )
         fac_fields = await asyncio.to_thread(_parse_viewstate, fac_html)
-        groups = await asyncio.to_thread(_parse_select, fac_html, _GROUP_SELECT)
+        groups = await asyncio.to_thread(_parse_select, fac_html, settings.html_form.group_select)
         log.debug("Faculty groups collected", faculty=fac["name"], count=len(groups))
 
         lists = await asyncio.gather(
@@ -241,9 +236,9 @@ class ParserService:
         Возвращает {название_группы: [url1, url2, ...]}.
         """
         r = await self._request("GET", settings.site.base_url)
-        r.encoding = "windows-1251"
+        r.encoding = settings.site.encoding
         base_fields = await asyncio.to_thread(_parse_viewstate, r.text)
-        faculties = await asyncio.to_thread(_parse_select, r.text, _FAC_SELECT)
+        faculties = await asyncio.to_thread(_parse_select, r.text, settings.html_form.faculty_select)
         log.debug("Start collecting links", faculties=len(faculties))
 
         per_faculty = await asyncio.gather(
@@ -285,7 +280,7 @@ class ParserService:
         if r.status_code != 200:
             log.debug("Non-functional vedomost", status=r.status_code, url=url)
             return []
-        r.encoding = "windows-1251"
+        r.encoding = settings.site.encoding
         # bs4-разбор — CPU-bound; в потоке, чтобы не блокировать event loop
         # (в нём же живёт FastAPI: синхронный разбор подвешивал API на время цикла).
         records = await asyncio.to_thread(parse_ved_html, r.text)
