@@ -2,6 +2,8 @@
 
 Формат: [время][уровень][трассировка][исполняемая строка] сообщение.
 Уровень берётся из env-переменной LOG_LEVEL (по умолчанию INFO).
+Здесь же живёт стартовый ASCII-баннер — визуальная часть вывода приложения;
+все цвета (уровней, трассировки, градиента баннера) — в config.LoggingSettings.
 """
 
 import contextvars
@@ -69,6 +71,51 @@ class CustomFormatter(logging.Formatter):
             log_line += self.formatStack(record.stack_info)
 
         return log_line
+
+
+def print_banner() -> None:
+    """Печатает resources/rating_v2.txt с диагональным градиентом (см. banner_colors)."""
+    banner_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "rating_v2.txt")
+    if not os.path.exists(banner_path):
+        return
+    try:
+        with open(banner_path, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        if not lines:
+            return
+
+        colors = _STYLE.banner_colors
+        max_w = max(len(line) for line in lines)
+        max_h = len(lines)
+        diagonal_coeff = 4.0
+        max_val = (max_w - 1) + (max_h - 1) * diagonal_coeff
+
+        def gradient_color(t: float) -> tuple[int, int, int]:
+            t = max(0.0, min(1.0, t))
+            if t >= 1.0:
+                return colors[-1]
+            segment_size = 1.0 / (len(colors) - 1)
+            segment_idx = int(t // segment_size)
+            local_t = (t - (segment_idx * segment_size)) / segment_size
+            c1, c2 = colors[segment_idx], colors[segment_idx + 1]
+            return tuple(int(a + (b - a) * local_t) for a, b in zip(c1, c2))
+
+        colored_lines = []
+        for row_idx, line in enumerate(lines):
+            colored_chars = []
+            for col_idx, char in enumerate(line):
+                if char.isspace():
+                    colored_chars.append(char)
+                else:
+                    t = (col_idx + row_idx * diagonal_coeff) / max_val if max_val > 0 else 0
+                    r, g, b = gradient_color(t)
+                    colored_chars.append(f"\033[38;2;{r};{g};{b}m{char}{_STYLE.reset}")
+            colored_lines.append("".join(colored_chars))
+
+        sys.stdout.write("\n".join(colored_lines) + "\n")
+        sys.stdout.flush()
+    except Exception:
+        pass
 
 
 def setup_logging() -> None:

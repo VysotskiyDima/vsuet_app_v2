@@ -10,9 +10,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.banner import print_banner
 from app.config import settings
-from app.logging_config import setup_logging, trace_ctx
+from app.logging_config import print_banner, setup_logging, trace_ctx
 from app.logging_utils import get_logger
 from app.repository.redis_repository import RedisRepository
 from app.routers import rating_router, students_router

@@ -126,6 +126,8 @@ class LoggingSettings(BaseSettings):
         "ERROR": "\033[31m",       # Red
         "CRITICAL": "\033[1;31m",  # Bold Red
     })
+    # Градиент ASCII-баннера при старте: Indigo → Violet → Pink.
+    banner_colors: tuple[tuple[int, int, int], ...] = ((79, 70, 229), (147, 51, 234), (236, 72, 153))
 
     @field_validator("level", mode="before")
     @classmethod
