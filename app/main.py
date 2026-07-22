@@ -81,7 +81,7 @@ async def _is_db_empty(repo: RedisRepository) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Application start up", year=settings.parsing_year, semester=settings.parsing_semester)
+    log.info("Application start up", year=settings.parsing.year, semester=settings.parsing.semester)
     log.info("Swagger UI documentation is available at: http://localhost:8000/docs")
 
     app.state.repo = RedisRepository()
@@ -102,14 +102,14 @@ async def lifespan(app: FastAPI):
     else:
         log.info(
             "Database already contains data — immediate parsing cycle skipped",
-            next_run_in_min=settings.scheduler_interval_minutes,
+            next_run_in_min=settings.scheduler.interval_minutes,
         )
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         run_parsing_cycle,
         trigger="interval",
-        minutes=settings.scheduler_interval_minutes,
+        minutes=settings.scheduler.interval_minutes,
         id="parsing_cycle",
         max_instances=1,
         coalesce=True,
@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
     app.state.scheduler = scheduler
-    log.info("Scheduler started", interval_min=settings.scheduler_interval_minutes)
+    log.info("Scheduler started", interval_min=settings.scheduler.interval_minutes)
 
     try:
         yield

@@ -28,14 +28,16 @@ log = get_logger(__name__)
 
 
 
-TIMEOUT = httpx.Timeout(30.0)
-CONCURRENCY = 12 # лучшее значение по итогам тестов
-RETRIES = 4           # запас попыток, чтобы потери ведомостей держались < 1%
-RETRY_BACKOFF = 2     # база экспоненциального бэкоффа (с)
-RETRY_MAX_DELAY = 20  # потолок задержки между попытками (с)
+# Тюнинг и его обоснование живут в config.ScraperSettings — здесь только производные.
+_SCRAPER = settings.scraper
+TIMEOUT = httpx.Timeout(_SCRAPER.timeout_s)
+CONCURRENCY = _SCRAPER.concurrency
+RETRIES = _SCRAPER.retries
+RETRY_BACKOFF = _SCRAPER.retry_backoff_s
+RETRY_MAX_DELAY = _SCRAPER.retry_max_delay_s
 
 LIMITS = httpx.Limits(max_connections=CONCURRENCY, max_keepalive_connections=CONCURRENCY)
-HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": settings.rating_base_url}
+HEADERS = {"User-Agent": _SCRAPER.user_agent, "Referer": settings.site.base_url}
 
 _FAC_SELECT = "ctl00$ContentPage$cmbFacultets"
 _GROUP_SELECT = "ctl00$ContentPage$cmbGroups"
@@ -85,7 +87,7 @@ def _parse_urls(html: str) -> list[str]:
     for a in table.find_all("a", href=True):
         m = re.search(r"id=(\d+)", a["href"])
         if m:
-            urls.append(f"{settings.rating_ved_url}?id={m.group(1)}")
+            urls.append(f"{settings.site.ved_url}?id={m.group(1)}")
     return urls
 
 
@@ -167,7 +169,7 @@ class ParserService:
         raise RuntimeError("unreachable")
 
     async def _post(self, data: dict) -> str:
-        r = await self._request("POST", settings.rating_base_url, data=data)
+        r = await self._request("POST", settings.site.base_url, data=data)
         r.encoding = "windows-1251"
         return r.text
 
@@ -176,7 +178,7 @@ class ParserService:
     async def check_site_availability(self) -> bool:
         """True, если сайт отвечает HTTP 200."""
         try:
-            r = await self._request("GET", settings.rating_base_url)
+            r = await self._request("GET", settings.site.base_url)
         except httpx.HTTPError:
             log.warning("Site is unavailable (network error)")
             return False
@@ -198,8 +200,8 @@ class ParserService:
                         **fac_fields,
                         _FAC_SELECT: fac["id"],
                         _GROUP_SELECT: grp["id"],
-                        "ctl00$ContentPage$cmbYears": settings.parsing_year,
-                        "ctl00$ContentPage$cmbSem": settings.parsing_semester,
+                        "ctl00$ContentPage$cmbYears": settings.parsing.year,
+                        "ctl00$ContentPage$cmbSem": settings.parsing.semester,
                     }
                 )
             urls = await asyncio.to_thread(_parse_urls, html)
@@ -219,8 +221,8 @@ class ParserService:
                     **base_fields,
                     _FAC_SELECT: fac["id"],
                     _GROUP_SELECT: "",
-                    "ctl00$ContentPage$cmbYears": settings.parsing_year,
-                    "ctl00$ContentPage$cmbSem": settings.parsing_semester,
+                    "ctl00$ContentPage$cmbYears": settings.parsing.year,
+                    "ctl00$ContentPage$cmbSem": settings.parsing.semester,
                 }
             )
         fac_fields = await asyncio.to_thread(_parse_viewstate, fac_html)
@@ -238,7 +240,7 @@ class ParserService:
 
         Возвращает {название_группы: [url1, url2, ...]}.
         """
-        r = await self._request("GET", settings.rating_base_url)
+        r = await self._request("GET", settings.site.base_url)
         r.encoding = "windows-1251"
         base_fields = await asyncio.to_thread(_parse_viewstate, r.text)
         faculties = await asyncio.to_thread(_parse_select, r.text, _FAC_SELECT)

@@ -12,6 +12,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from app.config import settings
 from app.entities.enums import RATING_VED_TYPES
 from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import ControlPoint, RatingVedModel, SubjectScore
@@ -29,11 +30,8 @@ log = get_logger(__name__)
 _PCT_RE = re.compile(r"^\d+%$")
 _INT_RE = re.compile(r"^-?\d+$")
 
-# Индексы ячеек строки студента (выверены по html-образцам ВГУИТ).
-_ZACH_COL = 2          # «Номер зачетной книжки» — строго td[2]
-_GRADE_COL = 4         # «Оценка» в оценочных таблицах
-_RETAKE_COLS = (11, 9, 7)  # «Результат» 3-й/2-й/1-й пересдачи (поздний — приоритетнее)
-_KT_FIRST_COL = 3      # первый балл КТ1 (Лек.); далее блоками по 5 ячеек на КТ
+# Разметка ведомости (индексы колонок, id-маркеры) — config.HtmlVedSettings.
+_VED = settings.html_ved
 
 
 
@@ -58,9 +56,9 @@ def _score(tds: list, idx: int) -> str | int:
 
 
 def _is_ved_row(row) -> bool:
-    """Возвращает True, если строка таблицы является строкой с оценками студентов (содержит классы VedRow1 или VedRow2)."""
+    """Возвращает True, если строка таблицы является строкой с оценками студентов."""
     classes = row.get("class") or []
-    return "VedRow1" in classes or "VedRow2" in classes
+    return any(cls in classes for cls in _VED.row_classes)
 
 
 def _pct_cells(row) -> list[int]:
@@ -93,7 +91,7 @@ def _parse_header_weights(table) -> tuple[int, list[int], list[int]]:
     num_kt = sum(
         1
         for td in header_rows[0].find_all("td")
-        if "Итог по КТ" in td.get_text()
+        if _VED.kt_total_marker in td.get_text()
     )
 
     kt_weights: list[int] = []
@@ -103,7 +101,7 @@ def _parse_header_weights(table) -> tuple[int, list[int], list[int]]:
         if not any(t for t in texts):
             continue
         # Строка весов КТ: содержит метку «Вес Точки,%».
-        if any("Вес Точки" in t for t in texts):
+        if any(_VED.kt_weight_marker in t for t in texts):
             kt_weights = _pct_cells(row)
         # Строка весов видов работ: только проценты (и пустые ячейки).
         elif all((not t) or _PCT_RE.match(t) for t in texts):
@@ -124,8 +122,8 @@ def _parse_rating(table, rows: list, ved_type: str, subject_name: str) -> list[R
 
         control_points: list[ControlPoint] = []
         for i in range(num_kt):
-            base = _KT_FIRST_COL + i * 5
-            w = i * 4
+            base = _VED.kt_first_col + i * _VED.kt_block_cells
+            w = i * _VED.kt_works
             control_points.append(
                 ControlPoint(
                     kt_num=i + 1,
@@ -137,10 +135,10 @@ def _parse_rating(table, rows: list, ved_type: str, subject_name: str) -> list[R
                 )
             )
 
-        final_idx = _KT_FIRST_COL + num_kt * 5 + 1  # пропускаем колонку «Надбавка %»
+        final_idx = _VED.kt_first_col + num_kt * _VED.kt_block_cells + _VED.final_rating_offset
         records.append(
             RatingVedModel(
-                zach_number=_cell(tds, _ZACH_COL),
+                zach_number=_cell(tds, _VED.zach_col),
                 subject_name=subject_name,
                 ved_type=ved_type,
                 control_points=control_points,
@@ -152,11 +150,11 @@ def _parse_rating(table, rows: list, ved_type: str, subject_name: str) -> list[R
 
 def _extract_grade(tds: list) -> str:
     """Оценка студента: приоритет — поздняя пересдача, затем основная оценка."""
-    for idx in _RETAKE_COLS:
+    for idx in _VED.retake_cols:
         value = _cell(tds, idx)
         if value != "-":
             return value
-    return _cell(tds, _GRADE_COL)
+    return _cell(tds, _VED.grade_col)
 
 
 def _parse_grade(rows: list, ved_type: str, subject_name: str) -> list[NotRatingVedModel]:
@@ -168,7 +166,7 @@ def _parse_grade(rows: list, ved_type: str, subject_name: str) -> list[NotRating
             continue
         records.append(
             NotRatingVedModel(
-                zach_number=_cell(tds, _ZACH_COL),
+                zach_number=_cell(tds, _VED.zach_col),
                 subject_name=subject_name,
                 ved_type=ved_type,
                 grade=_extract_grade(tds),
@@ -185,19 +183,19 @@ def parse_ved_html(html: str) -> list[RatingVedModel] | list[NotRatingVedModel]:
     """
     soup = BeautifulSoup(html, "lxml")
 
-    type_tag = soup.find("span", id="ucVedBox_lblTypeVed")
+    type_tag = soup.find("span", id=_VED.type_span_id)
     if not type_tag or not type_tag.get_text(strip=True):
         log.debug("Skip: no ucVedBox_lblTypeVed (non-functional vedomost)")
         return []
 
     ved_type = type_tag.get_text(strip=True)
-    dis_tag = soup.find("span", id="ucVedBox_lblDis")
+    dis_tag = soup.find("span", id=_VED.subject_span_id)
     subject_name = dis_tag.get_text(strip=True) if dis_tag and dis_tag.get_text(strip=True) else "-"
 
-    rows = soup.find_all("tr", class_=["VedRow1", "VedRow2"])
-    table = soup.find("table", id="ucVedBox_tblVed")
+    rows = soup.find_all("tr", class_=list(_VED.row_classes))
+    table = soup.find("table", id=_VED.table_id)
 
-    has_kt = soup.find("input", id="ucVedBox_chkShowKT") is not None
+    has_kt = soup.find("input", id=_VED.kt_checkbox_id) is not None
     is_rating =ved_type in RATING_VED_TYPES and has_kt and table is not None
 
     fmt = "reitingoviy" if is_rating else "otsenochniy"

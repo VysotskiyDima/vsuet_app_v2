@@ -42,9 +42,9 @@ async def run_parsing_cycle() -> None:
 
         if not report.site_available:
             next_run = (
-                datetime.now() + timedelta(minutes=settings.scheduler_interval_minutes)
+                datetime.now() + timedelta(minutes=settings.scheduler.interval_minutes)
             ).strftime("%Y-%m-%d %H:%M:%S")
-            log.warning("Parsing cycle postponed", url=settings.rating_base_url, next_run=next_run)
+            log.warning("Parsing cycle postponed", url=settings.site.base_url, next_run=next_run)
             return
 
         log.info("Parsing cycle completed", **report.summary())

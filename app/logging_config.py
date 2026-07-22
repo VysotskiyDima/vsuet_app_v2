@@ -15,17 +15,8 @@ from app.config import settings
 # Контекст для трассировочных идентификаторов (например, REQUEST-UUID, TRANSACTION-ID)
 trace_ctx: contextvars.ContextVar[Dict[str, Any]] = contextvars.ContextVar("trace_ctx", default={})
 
-
-_RESET = "\033[0m"
-_LEVEL_COLORS = {
-    "DEBUG": "\033[90m",      # Grey
-    "INFO": "\033[32m",       # Green
-    "WARNING": "\033[33m",    # Yellow
-    "ERROR": "\033[31m",      # Red
-    "CRITICAL": "\033[1;31m", # Bold Red
-}
-_CYAN = "\033[36m"
-_BLUE = "\033[94m"
+# Оформление (цвета ANSI) сгруппировано в config.LoggingSettings.
+_STYLE = settings.logging
 
 
 class CustomFormatter(logging.Formatter):
@@ -36,11 +27,11 @@ class CustomFormatter(logging.Formatter):
         # Форматируем время с добавлением миллисекунд (через запятую)
         t = self.formatTime(record, self.datefmt)
         asctime_ms = f"{t},{int(record.msecs):03d}"
-        asctime_ms_str = f"{_BLUE}{asctime_ms}{_RESET}"
+        asctime_ms_str = f"{_STYLE.time_color}{asctime_ms}{_STYLE.reset}"
 
         levelname = record.levelname
-        color = _LEVEL_COLORS.get(levelname, "")
-        levelname_str = f"{color}{levelname}{_RESET}" if color else levelname
+        color = _STYLE.level_colors.get(levelname, "")
+        levelname_str = f"{color}{levelname}{_STYLE.reset}" if color else levelname
 
         # Определяем путь к файлу относительно корня проекта
         pathname = record.pathname
@@ -58,7 +49,7 @@ class CustomFormatter(logging.Formatter):
         ctx_str = ""
         if ctx:
             ctx_content = "".join(f"[{k}={v}]" for k, v in ctx.items())
-            ctx_str = f"{_CYAN}{ctx_content}{_RESET}"
+            ctx_str = f"{_STYLE.ctx_color}{ctx_content}{_STYLE.reset}"
 
         message = record.getMessage()
         log_line = f"[{asctime_ms_str}][{levelname_str}]{ctx_str}[{exec_str}] {message}"
@@ -82,11 +73,8 @@ class CustomFormatter(logging.Formatter):
 
 def setup_logging() -> None:
     """Инициализирует логирование всего приложения. Вызывать один раз при старте."""
-    level_str = settings.log_level.upper()
-    if level_str == "DEV":
-        level = logging.INFO
-    else:
-        level = logging.DEBUG
+    # Уровень нормализован валидатором LoggingSettings (легаси-алиас DEV → INFO).
+    level = getattr(logging, settings.logging.level)
 
     root = logging.getLogger()
     root.setLevel(level)

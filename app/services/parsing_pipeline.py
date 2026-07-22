@@ -101,7 +101,7 @@ class ParsingPipeline:
             async with self._stage(1, "checking site availability"):
                 report.site_available = await self._parser.check_site_availability()
             if not report.site_available:
-                log.warning("Site is unavailable, cycle skipped", url=settings.rating_base_url)
+                log.warning("Site is unavailable, cycle skipped", url=settings.site.base_url)
                 return report
 
             async with self._stage(2, "clearing background DB and collecting links"):

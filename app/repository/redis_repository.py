@@ -23,26 +23,26 @@ def _escape_glob(value: str) -> str:
 
 class RedisRepository:
     def __init__(self) -> None:
-        self._data_dbs = (settings.redis_db_0, settings.redis_db_1)
+        self._data_dbs = (settings.redis.db_0, settings.redis.db_1)
         self._clients: dict[int, redis.Redis] = {
             db: redis.Redis(
-                host=settings.redis_host,
-                port=settings.redis_port,
+                host=settings.redis.host,
+                port=settings.redis.port,
                 db=db,
                 decode_responses=True,
             )
             for db in self._data_dbs
         }
         self._meta = redis.Redis(
-            host=settings.redis_host,
-            port=settings.redis_port,
-            db=settings.redis_meta_db,
+            host=settings.redis.host,
+            port=settings.redis.port,
+            db=settings.redis.meta_db,
             decode_responses=True,
         )
         log.debug(
             "Redis clients created",
-            host=f"{settings.redis_host}:{settings.redis_port}",
-            data_dbs=self._data_dbs, meta_db=settings.redis_meta_db,
+            host=f"{settings.redis.host}:{settings.redis.port}",
+            data_dbs=self._data_dbs, meta_db=settings.redis.meta_db,
         )
 
     async def close(self) -> None:
