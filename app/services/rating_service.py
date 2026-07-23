@@ -5,7 +5,7 @@ from fastapi import Request
 from app.entities.enums import NOT_RATING_VED_TYPES, RATING_VED_TYPES, VedType
 from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import RatingVedModel
-from app.logging_utils import get_logger
+from app.logging_config import get_logger
 from app.repository.redis_repository import RedisRepository
 
 log = get_logger(__name__)

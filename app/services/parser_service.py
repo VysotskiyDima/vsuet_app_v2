@@ -15,7 +15,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.config import settings
-from app.logging_utils import get_logger
+from app.logging_config import get_logger
 from app.parser.html_parser import parse_ved_html
 
 log = get_logger(__name__)

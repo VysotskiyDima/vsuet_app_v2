@@ -3,7 +3,7 @@ import json
 import redis.asyncio as redis
 
 from app.config import settings
-from app.logging_utils import get_logger
+from app.logging_config import get_logger
 
 log = get_logger(__name__)
 

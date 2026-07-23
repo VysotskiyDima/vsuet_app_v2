@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timedelta
 
 from app.config import settings
-from app.logging_utils import get_logger
+from app.logging_config import get_logger
 from app.repository.redis_repository import RedisRepository
 from app.services.parser_service import ParserService
 from app.services.parsing_pipeline import ParsingPipeline, PipelineError

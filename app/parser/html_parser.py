@@ -16,7 +16,7 @@ from app.config import settings
 from app.entities.enums import RATING_VED_TYPES
 from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import ControlPoint, RatingVedModel, SubjectScore
-from app.logging_utils import get_logger
+from app.logging_config import get_logger
 
 log = get_logger(__name__)
 

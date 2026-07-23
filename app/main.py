@@ -11,8 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.datastructures import Headers, MutableHeaders
 
 from app.config import settings
-from app.logging_config import print_banner, setup_logging, trace_ctx
-from app.logging_utils import get_logger
+from app.logging_config import get_logger, print_banner, setup_logging, trace_ctx
 from app.repository.redis_repository import RedisRepository
 from app.routers import rating_router, students_router
 from app.scheduler.jobs import run_parsing_cycle

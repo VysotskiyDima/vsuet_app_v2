@@ -1,15 +1,16 @@
-"""Централизованная настройка логирования с поддержкой трассировки.
+"""Логирование приложения: настройка, формат, трассировка и фабрика логгеров.
 
 Формат: [время][уровень][трассировка][исполняемая строка] сообщение.
 Уровень берётся из env-переменной LOG_LEVEL (по умолчанию INFO).
-Здесь же живёт стартовый ASCII-баннер — визуальная часть вывода приложения;
-все цвета (уровней, трассировки, градиента баннера) — в config.LoggingSettings.
+Здесь же — стартовый ASCII-баннер (визуальная часть вывода) и get_logger():
+модули берут логгер отсюда одной строкой, все цвета — в config.LoggingSettings.
 """
 
 import contextvars
 import logging
 import os
 import sys
+from collections.abc import MutableMapping
 from typing import Any
 
 from app.config import settings
@@ -21,6 +22,32 @@ trace_ctx: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVa
 
 # Оформление (цвета ANSI) сгруппировано в config.LoggingSettings.
 _STYLE = settings.logging
+
+# Служебные kwargs logging проходят насквозь и полями «k=v» не считаются.
+_LOGGING_KWARGS = frozenset({"exc_info", "stack_info", "stacklevel", "extra"})
+
+
+class KVLogger(logging.LoggerAdapter):
+    """Структурированный логгер: произвольные kwargs → поля «k=v» в конце строки.
+
+    Сознательно НЕ подмена logging.Logger (потеряли бы ленивую интерполяцию и
+    честные file:line — они указывали бы на обёртку), а тонкий LoggerAdapter:
+    кадры модуля logging пропускаются при поиске вызывающего.
+
+        log = get_logger(__name__)
+        log.info("Stage 2 completed", groups=5, links=1200)
+        # → [..][INFO][app/...:42] Stage 2 completed  |  groups=5  links=1200
+    """
+
+    def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]:
+        fields = {k: kwargs.pop(k) for k in list(kwargs) if k not in _LOGGING_KWARGS}
+        if fields:
+            msg = f"{msg}  |  " + "  ".join(f"{k}={v}" for k, v in fields.items())
+        return msg, kwargs
+
+
+def get_logger(name: str) -> KVLogger:
+    return KVLogger(logging.getLogger(name), {})
 
 
 class CustomFormatter(logging.Formatter):
