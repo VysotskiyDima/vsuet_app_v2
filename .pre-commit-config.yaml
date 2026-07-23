@@ -1,0 +1,25 @@
+# Автоматические проверки перед коммитом.
+# Установка хука в репозиторий:  pre-commit install
+# Ручной прогон по всем файлам:  pre-commit run --all-files
+repos:
+  # ruff: линт (+автофикс) и форматирование. Конфигурация берётся из pyproject.toml.
+  # rev синхронизирован с версией ruff в dev-зависимостях — иначе хук тянет свой ruff.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.22
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Базовые универсальные проверки (не только Python).
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^app/resources/        # ASCII-баннер не трогаем
+      - id: end-of-file-fixer
+        exclude: ^app/resources/
+      - id: check-yaml                   # docker-compose и pre-commit-конфиг
+      - id: check-toml                   # pyproject.toml
+      - id: check-added-large-files      # случайный крупный файл в коммите
+      - id: check-merge-conflict         # забытые маркеры <<<<<<<

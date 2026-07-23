@@ -382,16 +382,16 @@ popupBox.addEventListener("touchstart", (e) => {
 
 popupBox.addEventListener("touchmove", (e) => {
   if (!isDragging) return;
-  
+
   if (popupBox.scrollTop > 0) {
     isDragging = false;
     popupBox.style.transform = "";
     return;
   }
-  
+
   touchCurrentY = e.touches[0].clientY;
   const deltaY = touchCurrentY - touchStartY;
-  
+
   if (deltaY >= 0) {
     // preventDefault на первом же движении, иначе iOS заберёт жест под нативный скролл
     if (e.cancelable) e.preventDefault();
@@ -404,10 +404,10 @@ popupBox.addEventListener("touchmove", (e) => {
 popupBox.addEventListener("touchend", () => {
   if (!isDragging) return;
   isDragging = false;
-  
+
   const deltaY = touchCurrentY - touchStartY;
   popupBox.style.transition = "transform 0.22s cubic-bezier(0.2, 0.65, 0.25, 1)";
-  
+
   if (deltaY > 100) {
     popupBox.style.transform = "translateY(100%)";
     setTimeout(() => {
@@ -417,7 +417,7 @@ popupBox.addEventListener("touchend", () => {
   } else {
     popupBox.style.transform = "";
   }
-  
+
   touchStartY = 0;
   touchCurrentY = 0;
 });
