@@ -5,6 +5,10 @@
       "label": "start-redis-debug",
       "type": "shell",
       "command": "docker start vsuet_rating_v2-redis-DEBUG 2>/dev/null || docker run -d --name vsuet_rating_v2-redis-DEBUG -p 6379:6379 -v vsuet_rating_v2-redis-DEBUG-data:/data redis:7-alpine redis-server --save 60 1 --dbfilename dump.rdb --dir /data",
+      "windows": {
+        "command": "docker start vsuet_rating_v2-redis-DEBUG 2>$null; if ($LASTEXITCODE -ne 0) { docker run -d --name vsuet_rating_v2-redis-DEBUG -p 6379:6379 -v vsuet_rating_v2-redis-DEBUG-data:/data redis:7-alpine redis-server --save 60 1 --dbfilename dump.rdb --dir /data }",
+        "options": { "shell": { "executable": "powershell.exe" } }
+      },
       "problemMatcher": [],
       "presentation": {
         "reveal": "silent",
@@ -15,6 +19,9 @@
       "label": "clear-redis-debug",
       "type": "shell",
       "command": "docker exec vsuet_rating_v2-redis-DEBUG sh -c \"until redis-cli ping | grep -q PONG; do sleep 0.1; done && redis-cli flushall\"",
+      "windows": {
+        "options": { "shell": { "executable": "powershell.exe" } }
+      },
       "problemMatcher": [],
       "presentation": {
         "reveal": "silent",
@@ -34,12 +41,37 @@
       "label": "stop-redis-debug",
       "type": "shell",
       "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>/dev/null || true",
+      "windows": {
+        "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>$null; exit 0",
+        "options": { "shell": { "executable": "powershell.exe" } }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "stop-frontend",
+      "type": "shell",
+      "command": "pkill -f \"[h]ttp.server -d front 3000\" 2>/dev/null || true",
+      "windows": {
+        "command": "Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }",
+        "options": { "shell": { "executable": "powershell.exe" } }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "stop-all-debug-services",
+      "dependsOn": [
+        "stop-redis-debug",
+        "stop-frontend"
+      ],
       "problemMatcher": []
     },
     {
       "label": "start-frontend",
       "type": "shell",
       "command": "${workspaceFolder}/.venv/bin/python -m http.server -d front 3000",
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe -m http.server -d front 3000"
+      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "custom",
@@ -57,6 +89,9 @@
       "label": "wait-for-redis",
       "type": "shell",
       "command": "docker exec vsuet_rating_v2-redis-DEBUG sh -c \"until redis-cli ping | grep -q PONG; do sleep 0.1; done\"",
+      "windows": {
+        "options": { "shell": { "executable": "powershell.exe" } }
+      },
       "problemMatcher": []
     },
     {
