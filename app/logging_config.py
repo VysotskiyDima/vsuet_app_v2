@@ -1,31 +1,45 @@
-"""Централизованная настройка логирования с поддержкой трассировки.
-
-Формат: [время][уровень][трассировка][исполняемая строка] сообщение.
-Уровень берётся из env-переменной LOG_LEVEL (по умолчанию INFO).
-"""
-
 import contextvars
 import logging
 import os
 import sys
-from typing import Any, Dict
+from collections.abc import MutableMapping
+from typing import Any
 
 from app.config import settings
 
-# Контекст для трассировочных идентификаторов (например, REQUEST-UUID, TRANSACTION-ID)
-trace_ctx: contextvars.ContextVar[Dict[str, Any]] = contextvars.ContextVar("trace_ctx", default={})
+# Контекст для трассировочных идентификаторов (например, REQUEST-UUID).
+# default=None (а не {}): общий изменяемый дефолт — footgun, а пустой dict и None
+# одинаково falsy для `if ctx:` ниже.
+trace_ctx: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("trace_ctx", default=None)
+
+# Оформление (цвета ANSI) сгруппировано в config.LoggingSettings.
+_STYLE = settings.logging
+
+# Служебные kwargs logging проходят насквозь и полями «k=v» не считаются.
+_LOGGING_KWARGS = frozenset({"exc_info", "stack_info", "stacklevel", "extra"})
 
 
-_RESET = "\033[0m"
-_LEVEL_COLORS = {
-    "DEBUG": "\033[90m",      # Grey
-    "INFO": "\033[32m",       # Green
-    "WARNING": "\033[33m",    # Yellow
-    "ERROR": "\033[31m",      # Red
-    "CRITICAL": "\033[1;31m", # Bold Red
-}
-_CYAN = "\033[36m"
-_BLUE = "\033[94m"
+class KVLogger(logging.LoggerAdapter):
+    """Структурированный логгер: произвольные kwargs → поля «k=v» в конце строки.
+
+    Сознательно НЕ подмена logging.Logger (потеряли бы ленивую интерполяцию и
+    честные file:line — они указывали бы на обёртку), а тонкий LoggerAdapter:
+    кадры модуля logging пропускаются при поиске вызывающего.
+
+        log = get_logger(__name__)
+        log.info("Stage 2 completed", groups=5, links=1200)
+        # → [..][INFO][app/...:42] Stage 2 completed  |  groups=5  links=1200
+    """
+
+    def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]:
+        fields = {k: kwargs.pop(k) for k in list(kwargs) if k not in _LOGGING_KWARGS}
+        if fields:
+            msg = f"{msg}  |  " + "  ".join(f"{k}={v}" for k, v in fields.items())
+        return msg, kwargs
+
+
+def get_logger(name: str) -> KVLogger:
+    return KVLogger(logging.getLogger(name), {})
 
 
 class CustomFormatter(logging.Formatter):
@@ -36,21 +50,17 @@ class CustomFormatter(logging.Formatter):
         # Форматируем время с добавлением миллисекунд (через запятую)
         t = self.formatTime(record, self.datefmt)
         asctime_ms = f"{t},{int(record.msecs):03d}"
-        asctime_ms_str = f"{_BLUE}{asctime_ms}{_RESET}"
+        asctime_ms_str = f"{_STYLE.time_color}{asctime_ms}{_STYLE.reset}"
 
         levelname = record.levelname
-        color = _LEVEL_COLORS.get(levelname, "")
-        levelname_str = f"{color}{levelname}{_RESET}" if color else levelname
+        color = _STYLE.level_colors.get(levelname, "")
+        levelname_str = f"{color}{levelname}{_STYLE.reset}" if color else levelname
 
-        # Определяем путь к файлу относительно корня проекта
+        # Путь к файлу относительно корня проекта; для внешних библиотек убираем
+        # ведущий слэш, чтобы получить вид "usr/local/...".
         pathname = record.pathname
         cwd = os.getcwd()
-        if pathname.startswith(cwd):
-            exec_line = os.path.relpath(pathname, cwd)
-        else:
-            # Для внешних библиотек убираем ведущий слэш, чтобы получить вид "usr/local/..."
-            exec_line = pathname.lstrip(os.sep)
-
+        exec_line = os.path.relpath(pathname, cwd) if pathname.startswith(cwd) else pathname.lstrip(os.sep)
         exec_str = f"{exec_line}:{record.lineno}"
 
         # Добавляем данные трассировки, если они установлены в контексте
@@ -58,15 +68,14 @@ class CustomFormatter(logging.Formatter):
         ctx_str = ""
         if ctx:
             ctx_content = "".join(f"[{k}={v}]" for k, v in ctx.items())
-            ctx_str = f"{_CYAN}{ctx_content}{_RESET}"
+            ctx_str = f"{_STYLE.ctx_color}{ctx_content}{_STYLE.reset}"
 
         message = record.getMessage()
         log_line = f"[{asctime_ms_str}][{levelname_str}]{ctx_str}[{exec_str}] {message}"
 
         # Обработка исключений и трассировки стека
-        if record.exc_info:
-            if not record.exc_text:
-                record.exc_text = self.formatException(record.exc_info)
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
         if record.exc_text:
             if log_line[-1:] != "\n":
                 log_line += "\n"
@@ -80,23 +89,55 @@ class CustomFormatter(logging.Formatter):
         return log_line
 
 
+def print_banner() -> None:
+    """Печатает app/resources/rating_v2.txt с диагональным градиентом (см. banner_colors)."""
+    banner_path = os.path.join(os.path.dirname(__file__), "resources", "rating_v2.txt")
+    if not os.path.exists(banner_path):
+        return
+    try:
+        with open(banner_path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        if not lines:
+            return
+
+        colors = _STYLE.banner_colors
+        max_w = max(len(line) for line in lines)
+        max_h = len(lines)
+        diagonal_coeff = 4.0
+        max_val = (max_w - 1) + (max_h - 1) * diagonal_coeff
+
+        def gradient_color(t: float) -> tuple[int, int, int]:
+            t = max(0.0, min(1.0, t))
+            if t >= 1.0:
+                return colors[-1]
+            segment_size = 1.0 / (len(colors) - 1)
+            segment_idx = int(t // segment_size)
+            local_t = (t - (segment_idx * segment_size)) / segment_size
+            c1, c2 = colors[segment_idx], colors[segment_idx + 1]
+            return tuple(int(a + (b - a) * local_t) for a, b in zip(c1, c2, strict=True))
+
+        colored_lines = []
+        for row_idx, line in enumerate(lines):
+            colored_chars = []
+            for col_idx, char in enumerate(line):
+                if char.isspace():
+                    colored_chars.append(char)
+                else:
+                    t = (col_idx + row_idx * diagonal_coeff) / max_val if max_val > 0 else 0
+                    r, g, b = gradient_color(t)
+                    colored_chars.append(f"\033[38;2;{r};{g};{b}m{char}{_STYLE.reset}")
+            colored_lines.append("".join(colored_chars))
+
+        sys.stdout.write("\n".join(colored_lines) + "\n")
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+
 def setup_logging() -> None:
     """Инициализирует логирование всего приложения. Вызывать один раз при старте."""
-    # Выводим ASCII-баннер в stdout перед настройкой логгеров
-    banner_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "vsuet_rating_v2.txt")
-    if os.path.exists(banner_path):
-        try:
-            with open(banner_path, "r", encoding="utf-8") as f:
-                sys.stdout.write("\033[94m" + f.read() + "\033[0m\n")
-                sys.stdout.flush()
-        except Exception:
-            pass
-
-    level_str = settings.log_level.upper()
-    if level_str == "DEV":
-        level = logging.INFO
-    else:
-        level = logging.DEBUG
+    # Уровень нормализован валидатором LoggingSettings (легаси-алиас DEV → INFO).
+    level = getattr(logging, settings.logging.level)
 
     root = logging.getLogger()
     root.setLevel(level)
@@ -122,4 +163,3 @@ def setup_logging() -> None:
 
     # Приглушаем логи доступа uvicorn, так как мы пишем логи запросов в роутерах
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-

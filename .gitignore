@@ -4,4 +4,6 @@ __pycache__/
 .venv/
 .idea/
 *.log
-/venv
+CLAUDE.md
+.agents/
+.ruff_cache
