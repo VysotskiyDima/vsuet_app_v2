@@ -98,8 +98,8 @@ class CustomFormatter(logging.Formatter):
 
 
 def print_banner() -> None:
-    """Печатает resources/rating_v2.txt с диагональным градиентом (см. banner_colors)."""
-    banner_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "rating_v2.txt")
+    """Печатает app/resources/rating_v2.txt с диагональным градиентом (см. banner_colors)."""
+    banner_path = os.path.join(os.path.dirname(__file__), "resources", "rating_v2.txt")
     if not os.path.exists(banner_path):
         return
     try:

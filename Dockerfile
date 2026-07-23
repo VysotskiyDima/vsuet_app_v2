@@ -18,9 +18,8 @@ COPY pyproject.toml ./
 # Install python dependencies
 RUN pip install --no-cache-dir .
 
-# Copy application files
+# Copy application files (resources лежат внутри app/)
 COPY app ./app
-COPY resources ./resources
 
 # Expose FastAPI port
 EXPOSE 8000
