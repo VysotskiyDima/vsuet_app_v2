@@ -10,12 +10,14 @@ import contextvars
 import logging
 import os
 import sys
-from typing import Any, Dict
+from typing import Any
 
 from app.config import settings
 
-# Контекст для трассировочных идентификаторов (например, REQUEST-UUID, TRANSACTION-ID)
-trace_ctx: contextvars.ContextVar[Dict[str, Any]] = contextvars.ContextVar("trace_ctx", default={})
+# Контекст для трассировочных идентификаторов (например, REQUEST-UUID).
+# default=None (а не {}): общий изменяемый дефолт — footgun, а пустой dict и None
+# одинаково falsy для `if ctx:` ниже.
+trace_ctx: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("trace_ctx", default=None)
 
 # Оформление (цвета ANSI) сгруппировано в config.LoggingSettings.
 _STYLE = settings.logging
@@ -35,15 +37,11 @@ class CustomFormatter(logging.Formatter):
         color = _STYLE.level_colors.get(levelname, "")
         levelname_str = f"{color}{levelname}{_STYLE.reset}" if color else levelname
 
-        # Определяем путь к файлу относительно корня проекта
+        # Путь к файлу относительно корня проекта; для внешних библиотек убираем
+        # ведущий слэш, чтобы получить вид "usr/local/...".
         pathname = record.pathname
         cwd = os.getcwd()
-        if pathname.startswith(cwd):
-            exec_line = os.path.relpath(pathname, cwd)
-        else:
-            # Для внешних библиотек убираем ведущий слэш, чтобы получить вид "usr/local/..."
-            exec_line = pathname.lstrip(os.sep)
-
+        exec_line = os.path.relpath(pathname, cwd) if pathname.startswith(cwd) else pathname.lstrip(os.sep)
         exec_str = f"{exec_line}:{record.lineno}"
 
         # Добавляем данные трассировки, если они установлены в контексте
@@ -57,9 +55,8 @@ class CustomFormatter(logging.Formatter):
         log_line = f"[{asctime_ms_str}][{levelname_str}]{ctx_str}[{exec_str}] {message}"
 
         # Обработка исключений и трассировки стека
-        if record.exc_info:
-            if not record.exc_text:
-                record.exc_text = self.formatException(record.exc_info)
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
         if record.exc_text:
             if log_line[-1:] != "\n":
                 log_line += "\n"
@@ -79,7 +76,7 @@ def print_banner() -> None:
     if not os.path.exists(banner_path):
         return
     try:
-        with open(banner_path, "r", encoding="utf-8") as f:
+        with open(banner_path, encoding="utf-8") as f:
             lines = f.read().splitlines()
         if not lines:
             return
@@ -98,7 +95,7 @@ def print_banner() -> None:
             segment_idx = int(t // segment_size)
             local_t = (t - (segment_idx * segment_size)) / segment_size
             c1, c2 = colors[segment_idx], colors[segment_idx + 1]
-            return tuple(int(a + (b - a) * local_t) for a, b in zip(c1, c2))
+            return tuple(int(a + (b - a) * local_t) for a, b in zip(c1, c2, strict=True))
 
         colored_lines = []
         for row_idx, line in enumerate(lines):
@@ -147,4 +144,3 @@ def setup_logging() -> None:
 
     # Приглушаем логи доступа uvicorn, так как мы пишем логи запросов в роутерах
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-

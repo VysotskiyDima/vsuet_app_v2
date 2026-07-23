@@ -19,7 +19,8 @@
 """
 
 import logging
-from typing import Any, MutableMapping
+from collections.abc import MutableMapping
+from typing import Any
 
 _LOGGING_KWARGS = frozenset({"exc_info", "stack_info", "stacklevel", "extra"})
 

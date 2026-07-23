@@ -19,14 +19,9 @@ from app.scheduler.jobs import run_parsing_cycle
 from app.services.rating_service import RatingService
 from app.services.student_service import StudentService
 
-
-
-
 print_banner()
 setup_logging()
 log = get_logger(__name__)
-
-
 
 
 class TracingMiddleware:
@@ -65,14 +60,18 @@ class TracingMiddleware:
             process_time = (time.perf_counter() - start_time) * 1000
             log.info(
                 "Request handled",
-                method=scope["method"], path=scope["path"],
-                status=status_code, ms=round(process_time, 2),
+                method=scope["method"],
+                path=scope["path"],
+                status=status_code,
+                ms=round(process_time, 2),
             )
         except Exception:
             process_time = (time.perf_counter() - start_time) * 1000
             log.exception(
                 "Unhandled exception during request processing",
-                method=scope["method"], path=scope["path"], ms=round(process_time, 2),
+                method=scope["method"],
+                path=scope["path"],
+                ms=round(process_time, 2),
             )
             raise
         finally:
@@ -81,9 +80,8 @@ class TracingMiddleware:
 
 async def _is_db_empty(repo: RedisRepository) -> bool:
     """True, если обе data-БД пусты (первый запуск / свежий Redis)."""
-    for db_num, client in repo._clients.items():
-        size = await client.dbsize()
-        if size > 0:
+    for client in repo._clients.values():
+        if await client.dbsize() > 0:
             return False
     return True
 
@@ -147,4 +145,3 @@ app.add_middleware(
 app.add_middleware(TracingMiddleware)
 app.include_router(students_router.router)
 app.include_router(rating_router.router)
-

@@ -18,12 +18,7 @@ from app.config import settings
 from app.logging_utils import get_logger
 from app.parser.html_parser import parse_ved_html
 
-
-
-
 log = get_logger(__name__)
-
-
 
 
 def _backoff_delay(attempt: int) -> float:
@@ -36,8 +31,6 @@ def _backoff_delay(attempt: int) -> float:
     cfg = settings.scraper
     base = min(cfg.retry_backoff_s * (2 ** (attempt - 1)), cfg.retry_max_delay_s)
     return random.uniform(0, base)
-
-
 
 
 def _parse_viewstate(html: str) -> dict:
@@ -55,11 +48,7 @@ def _parse_select(html: str, name: str) -> list[dict]:
     select = soup.find("select", {"name": name})
     if not select:
         return []
-    return [
-        {"id": o["value"], "name": o.text.strip()}
-        for o in select.find_all("option")
-        if o.get("value")
-    ]
+    return [{"id": o["value"], "name": o.text.strip()} for o in select.find_all("option") if o.get("value")]
 
 
 def _parse_urls(html: str) -> list[str]:
@@ -87,8 +76,6 @@ def _form_data(event_target: str, viewstate: dict, fac_id: str, group_id: str) -
         form.years_select: settings.parsing.year,
         form.semester_select: settings.parsing.semester,
     }
-
-
 
 
 class ParserService:
@@ -123,8 +110,10 @@ class ParserService:
             )
         log.debug(
             "HTTP clients opened",
-            ved_pool=cfg.concurrency, concurrency=cfg.concurrency,
-            timeout_s=cfg.timeout_s, retries=cfg.retries,
+            ved_pool=cfg.concurrency,
+            concurrency=cfg.concurrency,
+            timeout_s=cfg.timeout_s,
+            retries=cfg.retries,
         )
         return self
 
@@ -157,8 +146,11 @@ class ParserService:
                 delay = _backoff_delay(attempt)
                 log.warning(
                     "Request retry",
-                    method=method, url=url, attempt=f"{attempt}/{retries}",
-                    error=repr(exc), delay_s=round(delay, 1),
+                    method=method,
+                    url=url,
+                    attempt=f"{attempt}/{retries}",
+                    error=repr(exc),
+                    delay_s=round(delay, 1),
                 )
                 await asyncio.sleep(delay)
                 continue
@@ -200,13 +192,10 @@ class ParserService:
             log.warning("Site is unavailable", status=r.status_code)
         return available
 
-
     async def _group_urls(self, fac_fields: dict, fac: dict, grp: dict) -> list[str]:
         try:
             async with self._sem:
-                html = await self._post(
-                    _form_data(settings.html_form.group_select, fac_fields, fac["id"], grp["id"])
-                )
+                html = await self._post(_form_data(settings.html_form.group_select, fac_fields, fac["id"], grp["id"]))
             urls = await asyncio.to_thread(_parse_urls, html)
             log.debug("Group vedomosts collected", group=grp["name"], count=len(urls))
             return urls
@@ -214,21 +203,15 @@ class ParserService:
             log.error("Error collecting group vedomosts", group=grp["name"], error=repr(exc))
             return []
 
-
     async def _faculty_groups(self, base_fields: dict, fac: dict) -> dict[str, list[str]]:
         async with self._sem:
-            fac_html = await self._post(
-                _form_data(settings.html_form.faculty_select, base_fields, fac["id"], "")
-            )
+            fac_html = await self._post(_form_data(settings.html_form.faculty_select, base_fields, fac["id"], ""))
         fac_fields = await asyncio.to_thread(_parse_viewstate, fac_html)
         groups = await asyncio.to_thread(_parse_select, fac_html, settings.html_form.group_select)
         log.debug("Faculty groups collected", faculty=fac["name"], count=len(groups))
 
-        lists = await asyncio.gather(
-            *(self._group_urls(fac_fields, fac, grp) for grp in groups)
-        )
-        return {grp["name"]: urls for grp, urls in zip(groups, lists)}
-
+        lists = await asyncio.gather(*(self._group_urls(fac_fields, fac, grp) for grp in groups))
+        return {grp["name"]: urls for grp, urls in zip(groups, lists, strict=True)}
 
     async def collect_ved_links(self) -> dict[str, list[str]]:
         """Конкурентно собирает ссылки на ведомости по всем группам.
@@ -241,9 +224,7 @@ class ParserService:
         faculties = await asyncio.to_thread(_parse_select, r.text, settings.html_form.faculty_select)
         log.debug("Start collecting links", faculties=len(faculties))
 
-        per_faculty = await asyncio.gather(
-            *(self._faculty_groups(base_fields, fac) for fac in faculties)
-        )
+        per_faculty = await asyncio.gather(*(self._faculty_groups(base_fields, fac) for fac in faculties))
 
         result: dict[str, list[str]] = {}
         for mapping in per_faculty:
@@ -253,7 +234,6 @@ class ParserService:
         total_urls = sum(len(v) for v in result.values())
         log.debug("Link collection completed", groups=len(result), vedomosts=total_urls)
         return result
-
 
     async def parse_ved(self, url: str) -> list[dict] | None:
         """Скачивает и парсит одну ведомость в записи целевого формата.

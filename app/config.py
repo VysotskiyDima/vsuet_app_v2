@@ -74,13 +74,13 @@ class ScraperSettings(BaseModel):
     кода, а не окружения, поэтому в .env они не выносятся.
     """
 
-    concurrency: int = 12        # лучшее значение по итогам тестов; сервер сериализует
-                                 # запросы одной ASP.NET-сессии, поэтому конкурентность
-                                 # работает только вместе с пулом клиентов
-    timeout_s: float = 30.0      # connect/read/write/pool; connect < 30 с ловил
-                                 # штормы ConnectTimeout на всплесках очереди SYN
-    retries: int = 4             # запас попыток, чтобы потери ведомостей были < 1%
-    retry_backoff_s: float = 2.0     # база экспоненциального бэкоффа
+    concurrency: int = 12  # лучшее значение по итогам тестов; сервер сериализует
+    # запросы одной ASP.NET-сессии, поэтому конкурентность
+    # работает только вместе с пулом клиентов
+    timeout_s: float = 30.0  # connect/read/write/pool; connect < 30 с ловил
+    # штормы ConnectTimeout на всплесках очереди SYN
+    retries: int = 4  # запас попыток, чтобы потери ведомостей были < 1%
+    retry_backoff_s: float = 2.0  # база экспоненциального бэкоффа
     retry_max_delay_s: float = 20.0  # потолок задержки между попытками
     user_agent: str = "Mozilla/5.0"
 
@@ -91,14 +91,14 @@ class HtmlVedSettings(BaseModel):
     Выверено по html-образцам ВГУИТ; при дрейфе вёрстки сайта правится здесь.
     """
 
-    zach_col: int = 2                          # «Номер зачетной книжки» — строго td[2]
-    grade_col: int = 4                         # «Оценка» в оценочных таблицах
+    zach_col: int = 2  # «Номер зачетной книжки» — строго td[2]
+    grade_col: int = 4  # «Оценка» в оценочных таблицах
     retake_cols: tuple[int, ...] = (11, 9, 7)  # «Результат» 3-й/2-й/1-й пересдачи
-                                               # (поздняя — приоритетнее)
-    kt_first_col: int = 3                      # первый балл КТ1 (Лек.)
-    kt_block_cells: int = 5                    # ячеек на одну КТ: Лек/Пр/Лаб/Др/Итог
-    kt_works: int = 4                          # видов работ в КТ: Лек/Пр/Лаб/Др
-    final_rating_offset: int = 1               # пропуск колонки «Надбавка %» перед итогом
+    # (поздняя — приоритетнее)
+    kt_first_col: int = 3  # первый балл КТ1 (Лек.)
+    kt_block_cells: int = 5  # ячеек на одну КТ: Лек/Пр/Лаб/Др/Итог
+    kt_works: int = 4  # видов работ в КТ: Лек/Пр/Лаб/Др
+    final_rating_offset: int = 1  # пропуск колонки «Надбавка %» перед итогом
 
     type_span_id: str = "ucVedBox_lblTypeVed"
     subject_span_id: str = "ucVedBox_lblDis"
@@ -117,15 +117,17 @@ class LoggingSettings(BaseSettings):
     level: str = "INFO"
 
     reset: str = "\033[0m"
-    time_color: str = "\033[94m"   # Blue
-    ctx_color: str = "\033[36m"    # Cyan
-    level_colors: dict[str, str] = Field(default_factory=lambda: {
-        "DEBUG": "\033[90m",       # Grey
-        "INFO": "\033[32m",        # Green
-        "WARNING": "\033[33m",     # Yellow
-        "ERROR": "\033[31m",       # Red
-        "CRITICAL": "\033[1;31m",  # Bold Red
-    })
+    time_color: str = "\033[94m"  # Blue
+    ctx_color: str = "\033[36m"  # Cyan
+    level_colors: dict[str, str] = Field(
+        default_factory=lambda: {
+            "DEBUG": "\033[90m",  # Grey
+            "INFO": "\033[32m",  # Green
+            "WARNING": "\033[33m",  # Yellow
+            "ERROR": "\033[31m",  # Red
+            "CRITICAL": "\033[1;31m",  # Bold Red
+        }
+    )
     # Градиент ASCII-баннера при старте: Indigo → Violet → Pink.
     banner_colors: tuple[tuple[int, int, int], ...] = ((79, 70, 229), (147, 51, 234), (236, 72, 153))
 

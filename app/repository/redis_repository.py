@@ -42,7 +42,8 @@ class RedisRepository:
         log.debug(
             "Redis clients created",
             host=f"{settings.redis.host}:{settings.redis.port}",
-            data_dbs=self._data_dbs, meta_db=settings.redis.meta_db,
+            data_dbs=self._data_dbs,
+            meta_db=settings.redis.meta_db,
         )
 
     async def close(self) -> None:

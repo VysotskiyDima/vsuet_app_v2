@@ -21,3 +21,31 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.22",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes (неиспользуемые импорты/переменные и пр.)
+    "I",       # isort — порядок импортов
+    "B",       # bugbear — типовые ловушки
+    "UP",      # pyupgrade — современный синтаксис
+    "SIM",     # simplify — упрощение конструкций
+    "RUF",     # правила самого ruff
+]
+ignore = [
+    "B008",             # вызовы в дефолтах аргументов — паттерн FastAPI Depends(...)
+    "RUF001", "RUF002", "RUF003",  # «неоднозначная» кириллица в строках/комментариях
+    "RUF012",           # model_config у pydantic не требует ClassVar
+    # str+Enum намеренный: record_to_key опирается на .value, а переход на StrEnum
+    # меняет поведение f"{member}" (см. issue про схему ключей Redis).
+    "UP042",
+]

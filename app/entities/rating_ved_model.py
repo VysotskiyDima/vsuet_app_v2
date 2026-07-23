@@ -23,4 +23,3 @@ class RatingVedModel(BaseModel):
     ved_type: VedType
     control_points: list[ControlPoint]
     final_rating: int | str
-  

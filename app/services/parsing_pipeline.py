@@ -12,8 +12,8 @@
 
 import asyncio
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from pydantic import BaseModel
 
@@ -45,7 +45,7 @@ class PipelineReport(BaseModel):
     groups: int = 0
     urls: int = 0
     parsed_veds: int = 0
-    empty_veds: int = 0   # нерабочие/пустые ведомости — штатный пропуск, не потеря
+    empty_veds: int = 0  # нерабочие/пустые ведомости — штатный пропуск, не потеря
     failed_veds: int = 0  # сетевая ошибка / 429 после ретраев — реальная потеря
     total_records: int = 0
     swap_performed: bool = False

@@ -5,7 +5,6 @@ from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import RatingVedModel
 from app.services.rating_service import RatingService, get_rating_service
 
-
 router = APIRouter(prefix="/rating", tags=["rating"])
 
 

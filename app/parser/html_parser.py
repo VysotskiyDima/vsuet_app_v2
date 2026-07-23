@@ -18,13 +18,7 @@ from app.entities.not_rating_ved_model import NotRatingVedModel
 from app.entities.rating_ved_model import ControlPoint, RatingVedModel, SubjectScore
 from app.logging_utils import get_logger
 
-
-
-
 log = get_logger(__name__)
-
-
-
 
 
 _PCT_RE = re.compile(r"^\d+%$")
@@ -32,8 +26,6 @@ _INT_RE = re.compile(r"^-?\d+$")
 
 # Разметка ведомости (индексы колонок, id-маркеры) — config.HtmlVedSettings.
 _VED = settings.html_ved
-
-
 
 
 def _cell(tds: list, idx: int) -> str:
@@ -88,11 +80,7 @@ def _parse_header_weights(table) -> tuple[int, list[int], list[int]]:
     if not header_rows:
         return 0, [], []
 
-    num_kt = sum(
-        1
-        for td in header_rows[0].find_all("td")
-        if _VED.kt_total_marker in td.get_text()
-    )
+    num_kt = sum(1 for td in header_rows[0].find_all("td") if _VED.kt_total_marker in td.get_text())
 
     kt_weights: list[int] = []
     work_weights: list[int] = []
@@ -111,7 +99,7 @@ def _parse_header_weights(table) -> tuple[int, list[int], list[int]]:
 
 
 def _parse_rating(table, rows: list, ved_type: str, subject_name: str) -> list[RatingVedModel]:
-    """Разбирает строки студентов в таблице рейтингового формата (с разбивкой по КТ и видам работ) и формирует список записей."""
+    """Разбирает строки студентов рейтингового формата (с разбивкой по КТ и видам работ) в записи."""
     num_kt, _, work_weights = _parse_header_weights(table)
 
     records: list[RatingVedModel] = []
@@ -158,7 +146,7 @@ def _extract_grade(tds: list) -> str:
 
 
 def _parse_grade(rows: list, ved_type: str, subject_name: str) -> list[NotRatingVedModel]:
-    """Разбирает строки студентов в таблице оценочного формата (где возвращается только одна финальная оценка) и формирует список записей."""
+    """Разбирает строки студентов оценочного формата (одна финальная оценка на запись)."""
     records: list[NotRatingVedModel] = []
     for row in rows:
         tds = row.find_all("td")
@@ -196,7 +184,7 @@ def parse_ved_html(html: str) -> list[RatingVedModel] | list[NotRatingVedModel]:
     table = soup.find("table", id=_VED.table_id)
 
     has_kt = soup.find("input", id=_VED.kt_checkbox_id) is not None
-    is_rating =ved_type in RATING_VED_TYPES and has_kt and table is not None
+    is_rating = ved_type in RATING_VED_TYPES and has_kt and table is not None
 
     fmt = "reitingoviy" if is_rating else "otsenochniy"
     log.debug("Parsing vedomost", type=ved_type, subject=subject_name, format=fmt, rows=len(rows))

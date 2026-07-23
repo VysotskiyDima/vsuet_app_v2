@@ -4,7 +4,7 @@ from enum import Enum
 class VedType(str, Enum):
     ZACHET = "Зачет"
     EKZAMEN = "Экзамен"
-    VYPUSKNAYA_RABOTA = "Выпуская работа" # «Выпуская работа» — без «н», это написание источника
+    VYPUSKNAYA_RABOTA = "Выпуская работа"  # «Выпуская работа» — без «н», это написание источника
     GOSEKZAMEN = "ГосЭкзамен"
     KONTROLNAYA_RABOTA = "Контрольная работа"
     KURSOVAYA_RABOTA = "Курсовая работа"
@@ -12,9 +12,11 @@ class VedType(str, Enum):
     PRAKTIKA = "Практика"
 
 
-RATING_VED_TYPES: frozenset[VedType] = frozenset({
-    VedType.ZACHET,
-    VedType.EKZAMEN,
-})
+RATING_VED_TYPES: frozenset[VedType] = frozenset(
+    {
+        VedType.ZACHET,
+        VedType.EKZAMEN,
+    }
+)
 
 NOT_RATING_VED_TYPES: frozenset[VedType] = frozenset(VedType) - RATING_VED_TYPES
