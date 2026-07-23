@@ -1,5 +1,3 @@
-"""Точка входа FastAPI: подключает роутер и запускает планировщик парсинга."""
-
 import time
 import uuid
 from contextlib import asynccontextmanager

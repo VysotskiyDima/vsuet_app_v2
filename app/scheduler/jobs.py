@@ -1,5 +1,3 @@
-"""Триггер планировщика: создаёт зависимости и запускает ParsingPipeline."""
-
 import asyncio
 from datetime import datetime, timedelta
 

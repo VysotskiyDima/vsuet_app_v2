@@ -1,16 +1,3 @@
-"""Конфигурация приложения: все настройки сгруппированы по подсистемам.
-
-Принцип разделения:
-  * в .env выносится только то, что меняется между окружениями/контейнерами —
-    адреса сервисов, период парсинга, интервал планировщика, уровень логов;
-  * тюнинг кода (колонки HTML-ведомости, тайминги HTTP, цвета логов) живёт
-    здесь как дефолты соответствующих групп и в .env не дублируется.
-
-Группы, читающие окружение, наследуют BaseSettings и держат свой env_prefix
-(имена переменных совпадают с историческими: REDIS_HOST, PARSING_YEAR, ...).
-Чисто кодовые группы — обычные BaseModel без чтения окружения.
-"""
-
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -74,14 +61,11 @@ class ScraperSettings(BaseModel):
     кода, а не окружения, поэтому в .env они не выносятся.
     """
 
-    concurrency: int = 12  # лучшее значение по итогам тестов; сервер сериализует
-    # запросы одной ASP.NET-сессии, поэтому конкурентность
-    # работает только вместе с пулом клиентов
-    timeout_s: float = 30.0  # connect/read/write/pool; connect < 30 с ловил
-    # штормы ConnectTimeout на всплесках очереди SYN
-    retries: int = 4  # запас попыток, чтобы потери ведомостей были < 1%
+    concurrency: int = 12
+    timeout_s: float = 30.0
+    retries: int = 4
     retry_backoff_s: float = 2.0  # база экспоненциального бэкоффа
-    retry_max_delay_s: float = 20.0  # потолок задержки между попытками
+    retry_max_delay_s: float = 20.0
     user_agent: str = "Mozilla/5.0"
 
 
@@ -93,8 +77,7 @@ class HtmlVedSettings(BaseModel):
 
     zach_col: int = 2  # «Номер зачетной книжки» — строго td[2]
     grade_col: int = 4  # «Оценка» в оценочных таблицах
-    retake_cols: tuple[int, ...] = (11, 9, 7)  # «Результат» 3-й/2-й/1-й пересдачи
-    # (поздняя — приоритетнее)
+    retake_cols: tuple[int, ...] = (11, 9, 7)  # «Результат» 3-й/2-й/1-й пересдачи (поздняя — приоритетнее)
     kt_first_col: int = 3  # первый балл КТ1 (Лек.)
     kt_block_cells: int = 5  # ячеек на одну КТ: Лек/Пр/Лаб/Др/Итог
     kt_works: int = 4  # видов работ в КТ: Лек/Пр/Лаб/Др
@@ -117,26 +100,23 @@ class LoggingSettings(BaseSettings):
     level: str = "INFO"
 
     reset: str = "\033[0m"
-    time_color: str = "\033[94m"  # Blue
-    ctx_color: str = "\033[36m"  # Cyan
+    time_color: str = "\033[94m"
+    ctx_color: str = "\033[36m"
     level_colors: dict[str, str] = Field(
         default_factory=lambda: {
-            "DEBUG": "\033[90m",  # Grey
-            "INFO": "\033[32m",  # Green
-            "WARNING": "\033[33m",  # Yellow
-            "ERROR": "\033[31m",  # Red
-            "CRITICAL": "\033[1;31m",  # Bold Red
+            "DEBUG": "\033[90m",
+            "INFO": "\033[32m",
+            "WARNING": "\033[33m",
+            "ERROR": "\033[31m",
+            "CRITICAL": "\033[1;31m",
         }
     )
-    # Градиент ASCII-баннера при старте: Indigo → Violet → Pink.
     banner_colors: tuple[tuple[int, int, int], ...] = ((79, 70, 229), (147, 51, 234), (236, 72, 153))
 
     @field_validator("level", mode="before")
     @classmethod
     def validate_level(cls, v: str) -> str:
         val = str(v).strip().upper()
-        if val == "DEV":  # легаси-алиас старой схемы «DEBUG / DEV»
-            return "INFO"
         if val not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
             raise ValueError("LOG_LEVEL must be one of DEBUG/INFO/WARNING/ERROR/CRITICAL")
         return val
