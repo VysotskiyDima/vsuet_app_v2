@@ -3,7 +3,7 @@
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
@@ -21,6 +21,11 @@ from app.services.student_service import StudentService
 print_banner()
 setup_logging()
 log = get_logger(__name__)
+
+# Небольшая задержка первого («немедленного») цикла: даём uvicorn договорить свой
+# стартовый баннер ("Uvicorn running on ...") до старта тяжёлого цикла — иначе job
+# на том же event loop влезает в хвост стартовых логов.
+_FIRST_RUN_DELAY_S = 3
 
 
 class TracingMiddleware:
@@ -100,11 +105,12 @@ async def lifespan(app: FastAPI):
     db_size = await active_client.dbsize()
     log.info("Active database", db=active_db, keys=db_size)
 
-    # Если обе data-БД пусты — первый запуск парсинга немедленно.
+    # Если обе data-БД пусты — первый запуск парсинга сразу после старта
+    # (с небольшой задержкой, чтобы не влезть в стартовые логи uvicorn).
     empty = await _is_db_empty(app.state.repo)
-    first_run = datetime.now() if empty else None
+    first_run = datetime.now() + timedelta(seconds=_FIRST_RUN_DELAY_S) if empty else None
     if empty:
-        log.info("Redis is empty — parsing cycle will run immediately")
+        log.info("Redis is empty — parsing cycle will run shortly after startup", delay_s=_FIRST_RUN_DELAY_S)
     else:
         log.info(
             "Database already contains data — immediate parsing cycle skipped",
