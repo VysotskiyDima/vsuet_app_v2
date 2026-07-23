@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class VedType(str, Enum):
+    '''Название видов ведомостей с сайта ВГУИТ.'''
     ZACHET = "Зачет"
     EKZAMEN = "Экзамен"
     VYPUSKNAYA_RABOTA = "Выпуская работа"  # «Выпуская работа» — без «н», это написание источника

@@ -21,8 +21,7 @@ from app.logging_config import get_logger
 log = get_logger(__name__)
 
 
-_PCT_RE = re.compile(r"^\d+%$")
-_INT_RE = re.compile(r"^-?\d+$")
+
 
 # Разметка ведомости (индексы колонок, id-маркеры) — config.HtmlVedSettings.
 _VED = settings.html_ved
@@ -39,6 +38,7 @@ def _cell(tds: list, idx: int) -> str:
 
 def _score(tds: list, idx: int) -> str | int:
     """Балл из ячейки: int, если число, иначе исходный текст либо "-"."""
+    _INT_RE = re.compile(r"^-?\d+$")
     text = _cell(tds, idx)
     if text == "-":
         return "-"
@@ -55,6 +55,7 @@ def _is_ved_row(row) -> bool:
 
 def _pct_cells(row) -> list[int]:
     """Значения процентов из строки шапки в порядке следования."""
+    _PCT_RE = re.compile(r"^\d+%$")
     out = []
     for td in row.find_all("td"):
         text = td.get_text(strip=True)
@@ -76,6 +77,7 @@ def _parse_header_weights(table) -> tuple[int, list[int], list[int]]:
       - список весов каждой контрольной точки (КТ);
       - плоский список весов для каждого вида учебной работы (по 4 на каждую КТ: Лек., Пр., Лаб., Др.).
     """
+    _PCT_RE = re.compile(r"^\d+%$")
     header_rows = [r for r in table.find_all("tr") if not _is_ved_row(r)]
     if not header_rows:
         return 0, [], []
