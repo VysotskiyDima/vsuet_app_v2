@@ -65,20 +65,20 @@ class RedisRepository:
         active = await self.get_active_db()
         return self._data_dbs[1] if active == self._data_dbs[0] else self._data_dbs[0]
 
-    async def switch_active_db(self) -> None:
-        """Меняет активную и фоновую БД ролями (обновляет указатель)."""
-        background = await self.get_background_db()
-        await self._meta.set(_ACTIVE_PTR_KEY, background)
-        log.info(
-            "Active DB switched",
-            old=self._data_dbs[0] if background == self._data_dbs[1] else self._data_dbs[1],
-            new=background,
-        )
+    async def switch_active_db(self) -> tuple[int, int]:
+        """Меняет активную и фоновую БД ролями. Возвращает (старая_активная, новая_активная)."""
+        old = await self.get_active_db()
+        new = await self.get_background_db()
+        await self._meta.set(_ACTIVE_PTR_KEY, new)
+        log.debug("Active DB switched", old=old, new=new)
+        return old, new
 
-    async def flush_background(self) -> None:
+    async def flush_background(self) -> int:
+        """Очищает фоновую БД. Возвращает её номер."""
         background = await self.get_background_db()
         await self._clients[background].flushdb()
-        log.info("Background DB flushed", db=background)
+        log.debug("Background DB flushed", db=background)
+        return background
 
     async def set_records(self, db: int, items: dict[str, dict]) -> None:
         """Пакетная запись: все ключи одной пачкой через pipeline (один round-trip)."""
