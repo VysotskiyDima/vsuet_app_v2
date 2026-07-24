@@ -6,10 +6,10 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: vysotskiydima/vsuet_app_v2   # уже в lowercase, как требует GHCR
+  IMAGE_NAME: vysotskiydima/vsuet_app_v2
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,11 +64,9 @@ jobs:
             set -e
             cd ${{ secrets.VPS_PROJECT_PATH }}
 
-            # Подтягиваем свежий код (nginx.conf, front/, docker-compose.prod.yml)
             git fetch origin main
             git reset --hard origin/main
 
-            # Логинимся в GHCR, чтобы стянуть свежесобранный образ
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             export IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
