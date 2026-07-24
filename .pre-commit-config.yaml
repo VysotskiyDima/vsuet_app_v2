@@ -15,8 +15,6 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-      - id: trailing-whitespace
-        exclude: ^app/resources/        # ASCII-баннер не трогаем
       - id: end-of-file-fixer
         exclude: ^app/resources/
       - id: check-yaml                   # docker-compose и pre-commit-конфиг
