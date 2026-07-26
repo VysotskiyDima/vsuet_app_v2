@@ -34,6 +34,7 @@ jobs:
       packages: write
     outputs:
       backend_changed: ${{ steps.filter.outputs.backend }}
+      nginx_changed: ${{ steps.filter.outputs.nginx }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,6 +49,8 @@ jobs:
               - 'Dockerfile'
               - 'pyproject.toml'
               - 'uv.lock'
+            nginx:
+              - 'nginx/**'
 
       - name: Log in to GHCR
         if: steps.filter.outputs.backend == 'true'
@@ -91,7 +94,6 @@ jobs:
             set -e
             cd ${{ secrets.VPS_PROJECT_PATH }}
 
-  
             git fetch origin main
             git reset --hard origin/main
 
@@ -102,6 +104,14 @@ jobs:
               docker compose -f docker-compose.prod.yml up -d --no-deps app
             else
               echo "==> Backend unchanged, skipping app restart"
+            fi
+
+            if [ "${{ needs.build_and_push.outputs.nginx_changed }}" = "true" ]; then
+              echo "==> nginx config changed, testing and reloading"
+              docker exec vsuet_rating_v2-nginx nginx -t
+              docker exec vsuet_rating_v2-nginx nginx -s reload
+            else
+              echo "==> nginx config unchanged, skipping reload"
             fi
 
             docker image prune -f
