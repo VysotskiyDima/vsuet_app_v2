@@ -39,6 +39,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Смотрит diff последнего пуша и решает, что реально изменилось.
+      # Все шаги ниже условно пропускаются, если backend не затронут —
+      # именно здесь и решается "пересобирать или нет".
       - name: Detect changed paths
         uses: dorny/paths-filter@v3
         id: filter
@@ -94,6 +97,9 @@ jobs:
             set -e
             cd ${{ secrets.VPS_PROJECT_PATH }}
 
+            # Синхронизируем код (nginx.conf, front/, docker-compose.prod.yml).
+            # Выполняется всегда — front-статика на диске должна быть свежей
+            # независимо от того, что именно менялось.
             git fetch origin main
             git reset --hard origin/main
 
@@ -113,5 +119,8 @@ jobs:
             else
               echo "==> nginx config unchanged, skipping reload"
             fi
+
+            # front/ обновляется просто через git reset выше — не требует
+            # ни пересборки, ни reload (volume читается заново на каждый запрос)
 
             docker image prune -f
