@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: vysotskiydima/vsuet_app_v2-backend
+  BACKEND_IMAGE: vysotskiydima/backend
 
 jobs:
   lint:
