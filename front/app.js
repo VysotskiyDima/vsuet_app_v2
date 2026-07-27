@@ -123,8 +123,11 @@ if (demoFill) demoFill.addEventListener("click", () => { zachInput.value = "2471
 // ============================================================
 // Переключение экранов
 // ============================================================
+// Номер зачётки — единственное состояние «входа»: пока он запомнен,
+// приложение считает сессию открытой и переживает перезагрузку.
 const LAST_ZACH_KEY = "rating:lastZach";
 function rememberZach(zach) { try { localStorage.setItem(LAST_ZACH_KEY, zach); } catch (_) {} }
+function forgetZach() { try { localStorage.removeItem(LAST_ZACH_KEY); } catch (_) {} }
 
 function openRating(zach) {
   currentZachValue = zach;
@@ -137,11 +140,13 @@ function openRating(zach) {
 }
 
 function closeRating() {
+  forgetZach();
+  currentZachValue = "";
   viewApp.hidden = true;
   viewLogin.hidden = false;
   ratingContent.innerHTML = "";
+  zachInput.value = "";
   zachInput.focus();
-  zachInput.select();
 }
 
 // ============================================================
@@ -179,33 +184,33 @@ const LESSON_TYPES = { lecture: "Лекция", practice: "Практика", la
 const MOCK_GROUP = "ПИ-231";
 const MOCK_SCHEDULE = {
   "ПОНЕДЕЛЬНИК": [
-    { time: "08.00-09.35", name: "Математический анализ",       type: "lecture",  room: "К-301", teacher: "Иванова Т. С." },
-    { time: "09.45-11.20", name: "Программирование на Python",  type: "lab",      room: "А-215", teacher: "Петров А. В." },
-    { time: "11.50-13.25", name: "Дискретная математика",       type: "practice", room: "К-118", teacher: "Сидорова Е. Н." },
+    { time: "08.00-09.35", name: "Математический анализ",       type: "lecture",  room: "К-301", teacher: "Иванова Т. С.", subgroup: "" },
+    { time: "09.45-11.20", name: "Программирование на Python",  type: "lab",      room: "А-215", teacher: "Петров А. В.", subgroup: "1" },
+    { time: "11.50-13.25", name: "Дискретная математика",       type: "practice", room: "К-118", teacher: "Сидорова Е. Н.", subgroup: "2" },
   ],
   "ВТОРНИК": [
-    { time: "09.45-11.20", name: "Базы данных",                 type: "lecture",  room: "К-204", teacher: "Кузнецов Д. И." },
-    { time: "11.50-13.25", name: "Базы данных",                 type: "lab",      room: "А-217", teacher: "Кузнецов Д. И." },
-    { time: "13.35-15.10", name: "Иностранный язык",            type: "seminar",  room: "Г-402", teacher: "Морозова И. П." },
+    { time: "09.45-11.20", name: "Базы данных",                 type: "lecture",  room: "К-204", teacher: "Кузнецов Д. И.", subgroup: "" },
+    { time: "11.50-13.25", name: "Базы данных",                 type: "lab",      room: "А-217", teacher: "Кузнецов Д. И.", subgroup: "1" },
+    { time: "13.35-15.10", name: "Иностранный язык",            type: "seminar",  room: "Г-402", teacher: "Морозова И. П.", subgroup: "" },
   ],
   "СРЕДА": [
-    { time: "08.00-09.35", name: "Операционные системы",        type: "lecture",  room: "К-301", teacher: "Фёдоров С. А." },
-    { time: "09.45-11.20", name: "Операционные системы",        type: "practice", room: "А-215", teacher: "Фёдоров С. А." },
-    { time: "11.50-13.25", name: "Физическая культура",         type: "practice", room: "Спорткомплекс", teacher: "" },
-    { time: "13.35-15.10", name: "Философия",                   type: "lecture",  room: "Г-210", teacher: "Волкова Н. М." },
+    { time: "08.00-09.35", name: "Операционные системы",        type: "lecture",  room: "К-301", teacher: "Фёдоров С. А.", subgroup: "" },
+    { time: "09.45-11.20", name: "Операционные системы",        type: "practice", room: "А-215", teacher: "Фёдоров С. А.", subgroup: "2" },
+    { time: "11.50-13.25", name: "Физическая культура",         type: "practice", room: "Спорткомплекс", teacher: "", subgroup: "1" },
+    { time: "13.35-15.10", name: "Философия",                   type: "lecture",  room: "Г-210", teacher: "Волкова Н. М.", subgroup: "" },
   ],
   "ЧЕТВЕРГ": [
-    { time: "09.45-11.20", name: "Веб-технологии",              type: "lab",      room: "А-219", teacher: "Николаев П. Р." },
-    { time: "11.50-13.25", name: "Компьютерные сети",           type: "lecture",  room: "К-204", teacher: "Егоров В. Л." },
+    { time: "09.45-11.20", name: "Веб-технологии",              type: "lab",      room: "А-219", teacher: "Николаев П. Р.", subgroup: "2" },
+    { time: "11.50-13.25", name: "Компьютерные сети",           type: "lecture",  room: "К-204", teacher: "Егоров В. Л.", subgroup: "" },
   ],
   "ПЯТНИЦА": [
-    { time: "08.00-09.35", name: "Теория вероятностей",         type: "lecture",  room: "К-301", teacher: "Иванова Т. С." },
-    { time: "09.45-11.20", name: "Теория вероятностей",         type: "practice", room: "К-118", teacher: "Иванова Т. С." },
-    { time: "11.50-13.25", name: "Программная инженерия",       type: "seminar",  room: "А-215", teacher: "Петров А. В." },
+    { time: "08.00-09.35", name: "Теория вероятностей",         type: "lecture",  room: "К-301", teacher: "Иванова Т. С.", subgroup: "" },
+    { time: "09.45-11.20", name: "Теория вероятностей",         type: "practice", room: "К-118", teacher: "Иванова Т. С.", subgroup: "1" },
+    { time: "11.50-13.25", name: "Программная инженерия",       type: "seminar",  room: "А-215", teacher: "Петров А. В.", subgroup: "" },
   ],
   "СУББОТА": [
-    { time: "09.45-11.20", name: "Архитектура ЭВМ",             type: "lecture",  room: "К-204", teacher: "Егоров В. Л." },
-    { time: "11.50-13.25", name: "Веб-технологии",              type: "practice", room: "А-219", teacher: "Николаев П. Р." },
+    { time: "09.45-11.20", name: "Архитектура ЭВМ",             type: "lecture",  room: "К-204", teacher: "Егоров В. Л.", subgroup: "" },
+    { time: "11.50-13.25", name: "Веб-технологии",              type: "practice", room: "А-219", teacher: "Николаев П. Р.", subgroup: "2" },
   ],
 };
 
@@ -276,6 +281,10 @@ function renderSchedDay() {
       const teacher = l.teacher
         ? `<div class="sched-card__row"><dt>Преподаватель</dt><dd>${escapeHtml(l.teacher)}</dd></div>`
         : "";
+      // Подгруппа есть не у всех: лекции и семинары идут всем потоком.
+      const subgroup = l.subgroup
+        ? `<div class="sched-card__row"><dt>№ подгруппы</dt><dd class="is-code">${escapeHtml(l.subgroup)}</dd></div>`
+        : "";
       return `<article class="sched-card" data-type="${l.type}">
         <div class="sched-card__time">${escapeHtml(start)}<span>${escapeHtml(end)}</span></div>
         <div class="sched-card__body">
@@ -283,6 +292,7 @@ function renderSchedDay() {
           <dl class="sched-card__meta">
             <div class="sched-card__row"><dt>Ауд.</dt><dd class="is-code">${escapeHtml(l.room)}</dd></div>
             ${teacher}
+            ${subgroup}
           </dl>
         </div>
         <span class="sched-card__badge">${LESSON_TYPES[l.type] || "Другое"}</span>
@@ -647,14 +657,21 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ============================================================
-// Восстановление последнего номера
+// Восстановление сессии
+// Запомненный номер сразу открывает приложение — перезагрузка не должна
+// выкидывать на экран входа. Скрипт блокирующий и стоит в конце <body>,
+// поэтому подмена экрана успевает до первой отрисовки, без мигания входа.
+// Если номер больше не действителен, loadRating покажет ошибку с повтором,
+// а «Выход» в тулбаре вернёт на экран входа и забудет номер.
 // ============================================================
-try {
-  const last = localStorage.getItem(LAST_ZACH_KEY);
-  if (last) zachInput.value = last;
-} catch (_) {}
-zachInput.focus();
-zachInput.select();
+let restoredZach = null;
+try { restoredZach = localStorage.getItem(LAST_ZACH_KEY); } catch (_) {}
+
+if (restoredZach) {
+  openRating(restoredZach);
+} else {
+  zachInput.focus();
+}
 
 // ============================================================
 // Регистрация Service Worker (PWA)

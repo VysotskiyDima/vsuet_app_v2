@@ -1,9 +1,9 @@
-const CACHE_NAME = "vsuet-rating-v35";
+const CACHE_NAME = "vsuet-rating-v42";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
-  "./app.js?v=26",
-  "./styles.css?v=26",
+  "./app.js?v=29",
+  "./styles.css?v=32",
   "./resources/logo.svg",
   "./resources/logo-192.png",
   "./resources/logo-512.png"

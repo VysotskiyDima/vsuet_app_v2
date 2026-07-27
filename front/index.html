@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Рейтинг успеваемости</title>
+  <title>UniversityApp</title>
   <meta name="description" content="Рейтинг успеваемости студентов по номеру зачётной книжки." />
 
   <link rel="icon" type="image/svg+xml" href="resources/logo.svg" />
@@ -22,13 +22,13 @@
   </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Рейтинг" />
+  <meta name="apple-mobile-web-app-title" content="UniversityApp" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=26" />
+  <link rel="stylesheet" href="styles.css?v=32" />
 
   <style>
     /* ── Попап КТ ─────────────────────────────────────────── */
@@ -259,9 +259,8 @@
     </symbol>
     <symbol id="ic-settings" viewBox="0 0 24 24">
       <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3.5 8.5h17M3.5 15.5h17" />
-        <circle cx="9" cy="8.5" r="2.5" />
-        <circle cx="15" cy="15.5" r="2.5" />
+        <path d="M9.98 5.77L10.39 2.89L13.61 2.89L14.02 5.77L14.97 6.16L17.31 4.42L19.58 6.69L17.84 9.03L18.23 9.98L21.11 10.39L21.11 13.61L18.23 14.02L17.84 14.97L19.58 17.31L17.31 19.58L14.97 17.84L14.02 18.23L13.61 21.11L10.39 21.11L9.98 18.23L9.03 17.84L6.69 19.58L4.42 17.31L6.16 14.97L5.77 14.02L2.89 13.61L2.89 10.39L5.77 9.98L6.16 9.03L4.42 6.69L6.69 4.42L9.03 6.16Z" />
+        <circle cx="12" cy="12" r="3.1" />
       </g>
     </symbol>
     <symbol id="ic-logout" viewBox="0 0 15 15">
@@ -273,7 +272,7 @@
   <main id="view-login" class="view view--login">
     <section class="cover" aria-labelledby="cover-title">
 
-      <h1 id="cover-title" class="cover__title">Рейтинг<br />успеваемости</h1>
+      <h1 id="cover-title" class="cover__title">UniversityApp</h1>
 
       <form id="login-form" class="field" novalidate>
         <label class="field__label" for="zach">Номер зачётной книжки</label>
@@ -352,6 +351,6 @@
 
   <!-- Версия обязательна: service worker отдаёт .js по cache-first, и без смены
        URL свежий index.html склеивается со старым скриптом из кэша. -->
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>

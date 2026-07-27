@@ -814,7 +814,14 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
   transition: background .16s ease, color .16s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.seg__btn.is-active { background: var(--stamp); color: var(--on-stamp); }
+/* Выбор отмечаем контуром и цветом текста, а не заливкой: сплошной ультрамарин
+   двумя блоками подряд забивал экран. Контур — inset box-shadow, а не border:
+   у кнопок его нет, и добавление сдвинуло бы их размер. */
+.seg__btn.is-active {
+  background: color-mix(in srgb, var(--stamp) 9%, transparent);
+  color: var(--stamp-ink);
+  box-shadow: inset 0 0 0 1.5px var(--stamp);
+}
 
 /* Дни недели */
 .days { display: flex; gap: 6px; margin: 16px 0 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
@@ -831,8 +838,17 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 .day__dow { font-size: .82rem; font-weight: 600; }
 .day__cnt { font-family: var(--font-mono); font-size: .62rem; }
 .day:hover { border-color: var(--line-2); color: var(--ink); }
-.day.is-active { background: var(--ink); border-color: var(--ink); color: var(--paper-3); }
-.day.is-active .day__cnt { color: color-mix(in srgb, var(--paper-3) 75%, transparent); }
+/* Тот же приём, что у «Числитель/Знаменатель» и у активного пункта навигации:
+   лёгкая подложка + ультрамариновый контур и текст. Второй контур через
+   inset box-shadow добавляет толщины, не трогая размер кнопки. */
+.day.is-active {
+  background: color-mix(in srgb, var(--stamp) 9%, var(--paper-3));
+  border-color: var(--stamp);
+  box-shadow: inset 0 0 0 1px var(--stamp);
+  color: var(--stamp-ink);
+}
+/* 92%: при .62rem счётчик считается мелким текстом, ему нужно 4.5:1 с запасом */
+.day.is-active .day__cnt { color: color-mix(in srgb, var(--stamp-ink) 92%, transparent); }
 .day.is-empty .day__cnt { opacity: .5; }
 
 /* Подпись выбранного дня */
@@ -905,8 +921,11 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 .sched-empty__seal { width: 44px; height: 44px; color: var(--line-2); margin-bottom: .6rem; }
 
 @media (max-width: 480px) {
+  /* Узкая карточка: бейдж не влезает справа от названия и переезжает под текст.
+     Колонка 2, а не «во всю ширину» — иначе он начинается от края колонки
+     со временем и висит левее всего остального содержимого. */
   .sched-card { grid-template-columns: auto 1fr; }
-  .sched-card__badge { grid-column: 1 / -1; justify-self: start; margin-top: 10px; }
+  .sched-card__badge { grid-column: 2; justify-self: start; margin-top: 10px; }
 }
 
 /* ============================================================

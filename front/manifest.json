@@ -1,6 +1,6 @@
 {
-  "name": "Рейтинг успеваемости",
-  "short_name": "Рейтинг",
+  "name": "UniversityApp",
+  "short_name": "UniversityApp",
   "description": "Рейтинг успеваемости студентов ВГУИТ по номеру зачётной книжки",
   "start_url": "./index.html",
   "display": "standalone",
