@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=20" />
 
   <style>
     /* ── Попап КТ ─────────────────────────────────────────── */
@@ -237,6 +237,26 @@
       <circle cx="100" cy="100" r="74" fill="none" stroke="currentColor" stroke-width="3" />
       <path d="M100 56 L113 87 L144 100 L113 113 L100 144 L87 113 L56 100 L87 87 Z" fill="currentColor" />
     </symbol>
+    <symbol id="ic-rating" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 20.5h17" /><path d="M6.5 20.5V12" /><path d="M12 20.5V4.5" /><path d="M17.5 20.5v-6" />
+      </g>
+    </symbol>
+    <symbol id="ic-schedule" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2.2" /><path d="M3.5 9.5h17M8 3.2v3.6M16 3.2v3.6" />
+      </g>
+    </symbol>
+    <symbol id="ic-settings" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 8.5h17M3.5 15.5h17" />
+        <circle cx="9" cy="8.5" r="2.5" />
+        <circle cx="15" cy="15.5" r="2.5" />
+      </g>
+    </symbol>
+    <symbol id="ic-logout" viewBox="0 0 15 15">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M3 1C2.44771 1 2 1.44772 2 2V13C2 13.5523 2.44772 14 3 14H10.5C10.7761 14 11 13.7761 11 13.5C11 13.2239 10.7761 13 10.5 13H3V2L10.5 2C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H3ZM12.6036 4.89645C12.4083 4.70118 12.0917 4.70118 11.8964 4.89645C11.7012 5.09171 11.7012 5.40829 11.8964 5.60355L13.2929 7H6.5C6.22386 7 6 7.22386 6 7.5C6 7.77614 6.22386 8 6.5 8H13.2929L11.8964 9.39645C11.7012 9.59171 11.7012 9.90829 11.8964 10.1036C12.0917 10.2988 12.4083 10.2988 12.6036 10.1036L14.8536 7.85355C15.0488 7.65829 15.0488 7.34171 14.8536 7.14645L12.6036 4.89645Z" fill="currentColor" />
+    </symbol>
   </svg>
 
   <!-- ===================== ВХОД ===================== -->
@@ -268,25 +288,70 @@
     </section>
   </main>
 
-  <!-- ===================== РЕЙТИНГ ===================== -->
-  <div id="view-rating" class="view view--rating" hidden>
-    <header class="topbar">
-      <div class="topbar__brand">
+  <!-- ===================== ПРИЛОЖЕНИЕ ===================== -->
+  <div id="view-app" class="app" hidden>
+
+    <!-- Навигация: сайдбар на десктопе, нижняя панель на мобилке -->
+    <nav class="nav" aria-label="Разделы">
+      <div class="nav__brand">
         <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
         <span class="brand__name">Рейтинг <span class="brand__name-sub">успеваемости</span></span>
       </div>
-      <div class="topbar__id">
-        <span class="topbar__id-label">Зачётная книжка</span>
-        <span class="topbar__id-num">№&nbsp;<span id="current-zach">—</span></span>
-      </div>
-      <button id="logout-btn" class="btn btn--ghost btn--icon" type="button" aria-label="Выйти">
-        <svg class="icon-logout" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 15" fill="none" aria-hidden="true">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M3 1C2.44771 1 2 1.44772 2 2V13C2 13.5523 2.44772 14 3 14H10.5C10.7761 14 11 13.7761 11 13.5C11 13.2239 10.7761 13 10.5 13H3V2L10.5 2C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H3ZM12.6036 4.89645C12.4083 4.70118 12.0917 4.70118 11.8964 4.89645C11.7012 5.09171 11.7012 5.40829 11.8964 5.60355L13.2929 7H6.5C6.22386 7 6 7.22386 6 7.5C6 7.77614 6.22386 8 6.5 8H13.2929L11.8964 9.39645C11.7012 9.59171 11.7012 9.90829 11.8964 10.1036C12.0917 10.2988 12.4083 10.2988 12.6036 10.1036L14.8536 7.85355C15.0488 7.65829 15.0488 7.34171 14.8536 7.14645L12.6036 4.89645Z" fill="currentColor" />
-        </svg>
-      </button>
-    </header>
 
-    <main id="rating-content" class="content" aria-live="polite"></main>
+      <div class="nav__list">
+        <button class="nav__item is-active" type="button" data-tab="rating" aria-current="page">
+          <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-rating" /></svg>
+          <span class="nav__label">Рейтинг</span>
+        </button>
+        <button class="nav__item" type="button" data-tab="schedule">
+          <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-schedule" /></svg>
+          <span class="nav__label">Расписание</span>
+        </button>
+        <button class="nav__item" type="button" data-tab="settings">
+          <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-settings" /></svg>
+          <span class="nav__label">Настройки</span>
+        </button>
+      </div>
+
+      <!-- Зачётка (только десктоп), под ней — выход.
+           На мобилке подвал скрыт, и выход встаёт четвёртым пунктом панели. -->
+      <div class="nav__foot">
+        <span class="nav__id-label">Зачётная книжка</span>
+        <span class="nav__id-num">№&nbsp;<span id="current-zach">—</span></span>
+      </div>
+
+      <button class="nav__item nav__item--logout" type="button" id="logout-btn" aria-label="Выйти из зачётки">
+        <svg class="nav__icon" viewBox="0 0 15 15" aria-hidden="true"><use href="#ic-logout" /></svg>
+        <span class="nav__label">Выход</span>
+      </button>
+    </nav>
+
+    <!-- Основная область -->
+    <div class="app__main">
+      <!-- Шапка раздела: название + контекст раздела (например, группа) -->
+      <header class="app__topbar">
+        <h1 class="app__topbar-head">
+          <span class="app__topbar-title" id="tab-title">Рейтинг</span>
+          <span class="app__topbar-tag" id="tab-tag" hidden></span>
+        </h1>
+        <span class="app__topbar-id" aria-label="Зачётная книжка">№&nbsp;<span id="current-zach-m">—</span></span>
+      </header>
+
+      <!-- Рейтинг -->
+      <section class="tab" id="tab-rating" data-panel="rating" aria-label="Рейтинг">
+        <main id="rating-content" class="content" aria-live="polite"></main>
+      </section>
+
+      <!-- Расписание -->
+      <section class="tab" id="tab-schedule" data-panel="schedule" aria-label="Расписание" hidden>
+        <div id="schedule-content" class="content"></div>
+      </section>
+
+      <!-- Настройки -->
+      <section class="tab" id="tab-settings" data-panel="settings" aria-label="Настройки" hidden>
+        <div id="settings-content" class="content"></div>
+      </section>
+    </div>
   </div>
 
   <script src="app.js"></script>

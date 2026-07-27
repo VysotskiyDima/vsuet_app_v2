@@ -614,3 +614,338 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 @media (max-width: 350px) {
   .brand__name-sub { display: none; }
 }
+
+/* ============================================================
+   ПРИЛОЖЕНИЕ · оболочка + навигация (сайдбар/нижняя панель)
+   Токены и дизайн-язык те же: бумага, ультрамариновая печать.
+   ============================================================ */
+
+/* --- оболочка --- */
+.app { min-height: 100dvh; }
+@media (min-width: 768px) {
+  .app { display: grid; grid-template-columns: 268px 1fr; }
+}
+
+.app__main { min-width: 0; }
+/* Внутри приложения отступ сверху задаёт шапка раздела — контенту столько не нужно */
+.app__main .content { padding-top: clamp(20px, 3vw, 32px); }
+/* на мобилке снизу фиксированная навигация — освобождаем место */
+@media (max-width: 767px) {
+  .app__main { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* --- Навигация --- */
+.nav {
+  display: flex;
+  background: var(--paper-2);
+}
+
+/* Десктоп: вертикальный сайдбар */
+@media (min-width: 768px) {
+  .nav {
+    flex-direction: column;
+    gap: .4rem;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    padding: 22px 16px;
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+  }
+}
+
+/* Мобилка: нижняя панель */
+@media (max-width: 767px) {
+  .nav {
+    position: fixed;
+    z-index: 30;
+    left: 0; right: 0; bottom: 0;
+    gap: 2px; /* выход — сосед списка, а не его пункт: держим шаг тот же */
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--paper-2) 92%, transparent);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Бренд в сайдбаре (только десктоп) */
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: 4px 10px 18px;
+}
+.nav__brand .brand__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -.01em;
+  line-height: 1.05;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 .35rem;
+}
+@media (max-width: 767px) { .nav__brand { display: none; } }
+
+/* Список пунктов */
+.nav__list { display: flex; }
+@media (min-width: 768px) {
+  /* flex:1 — чтобы зачётка с выходом прижимались к низу сайдбара */
+  .nav__list { flex: 1; flex-direction: column; gap: .3rem; }
+}
+@media (max-width: 767px) {
+  /* flex:3 на три раздела + flex:1 у выхода рядом = четыре равные доли панели */
+  .nav__list { flex: 3; gap: 2px; }
+}
+
+/* Пункт навигации */
+.nav__item {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  display: flex;
+  align-items: center;
+  transition: background .16s ease, color .16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav__icon { width: 22px; height: 22px; flex: none; }
+
+/* Десктоп: иконка + подпись в строку */
+@media (min-width: 768px) {
+  .nav__item {
+    gap: .75rem;
+    padding: .62rem .8rem;
+    border-radius: var(--r-md);
+    font-size: .95rem;
+    font-weight: 500;
+    border-left: 3px solid transparent;
+  }
+  .nav__item:hover { background: var(--paper-3); color: var(--ink); }
+  .nav__item.is-active {
+    background: color-mix(in srgb, var(--stamp) 10%, var(--paper-3));
+    color: var(--stamp-ink);
+    font-weight: 600;
+    border-left-color: var(--stamp);
+  }
+}
+
+/* Мобилка: иконка над подписью, равные доли */
+@media (max-width: 767px) {
+  .nav__item {
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 4px;
+    border-radius: var(--r-md);
+    font-size: .66rem;
+    font-weight: 500;
+    letter-spacing: .01em;
+    min-height: 52px;
+    justify-content: center;
+  }
+  .nav__item.is-active { color: var(--stamp-ink); }
+  .nav__item.is-active .nav__icon { color: var(--stamp); }
+}
+
+/* Выход — не раздел, а действие: держим в тулбаре, но отделяем цветом.
+   На десктопе стоит под номером зачётки, на мобилке — четвёртый пункт панели. */
+.nav__item--logout { color: var(--bad); }
+@media (min-width: 768px) {
+  .nav__item--logout { margin-top: 6px; }
+  .nav__item--logout:hover {
+    background: color-mix(in srgb, var(--bad) 9%, transparent);
+    color: var(--bad);
+  }
+}
+
+/* Подвал сайдбара — зачётка (только десктоп) */
+.nav__foot { margin-top: auto; padding: 14px 12px 2px; border-top: 1px solid var(--line); line-height: 1.15; }
+.nav__id-label { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+.nav__id-num { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; }
+@media (max-width: 767px) { .nav__foot { display: none; } }
+
+/* --- Шапка раздела (название + контекст, например группа) --- */
+.app__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 12px clamp(16px, 4vw, 40px);
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.app__topbar-head { margin: 0; display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.app__topbar-title { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em; }
+.app__topbar-tag {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .04em;
+  color: var(--stamp-ink);
+  background: color-mix(in srgb, var(--stamp) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stamp) 28%, transparent);
+  border-radius: 999px;
+  padding: .18rem .6rem;
+}
+.app__topbar-id { flex: none; font-family: var(--font-mono); font-weight: 700; font-size: .95rem; color: var(--ink-soft); }
+/* На узких экранах шапке хватает раздела и группы — номер есть в настройках */
+@media (max-width: 359px) { .app__topbar-id { display: none; } }
+/* На десктопе номер зачётки уже есть в подвале сайдбара — в шапке не дублируем */
+@media (min-width: 768px) {
+  .app__topbar { padding: 18px clamp(16px, 4vw, 40px) 16px; }
+  .app__topbar-title { font-size: 1.3rem; }
+  .app__topbar-id { display: none; }
+}
+
+/* ============================================================
+   РАСПИСАНИЕ
+   ============================================================ */
+.sched { max-width: 720px; margin: 0 auto; }
+
+/* Переключатель Числитель/Знаменатель */
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--paper-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.seg__btn {
+  appearance: none; border: none; cursor: pointer;
+  background: none; color: var(--ink-soft);
+  font-family: var(--font-body); font-weight: 600; font-size: .82rem;
+  padding: .4rem 1.1rem; border-radius: 999px;
+  transition: background .16s ease, color .16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.seg__btn.is-active { background: var(--stamp); color: #fff; }
+
+/* Дни недели */
+.days { display: flex; gap: 6px; margin: 16px 0 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+.day {
+  appearance: none; cursor: pointer; flex: 1 0 auto;
+  min-width: 48px; /* шесть дней (Пн…Сб) должны влезать в 375px без скролла */
+  background: var(--paper-3); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: .5rem .2rem;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--ink-soft); font-family: var(--font-body);
+  transition: background .16s, color .16s, border-color .16s;
+  -webkit-tap-highlight-color: transparent;
+}
+.day__dow { font-size: .82rem; font-weight: 600; }
+.day__cnt { font-family: var(--font-mono); font-size: .62rem; }
+.day:hover { border-color: var(--line-2); color: var(--ink); }
+.day.is-active { background: var(--ink); border-color: var(--ink); color: var(--paper-3); }
+.day.is-active .day__cnt { color: color-mix(in srgb, var(--paper-3) 75%, transparent); }
+.day.is-empty .day__cnt { opacity: .5; }
+
+/* Подпись выбранного дня */
+.sched__meta {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  margin: 18px 2px 12px;
+}
+.sched__day-title { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em; }
+.sched__week-tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; color: var(--ink-soft); }
+
+/* Список пар */
+.sched-list { display: flex; flex-direction: column; gap: 12px; }
+
+.sched-card {
+  --accent: var(--stamp);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0 14px;
+  align-items: start;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  animation: rise .4s cubic-bezier(.2,.7,.2,1) both;
+}
+.sched-card[data-type="lecture"]  { --accent: var(--stamp); }
+.sched-card[data-type="practice"] { --accent: var(--mid); }
+.sched-card[data-type="lab"]      { --accent: var(--good); }
+.sched-card[data-type="seminar"]  { --accent: #6C4DBE; }
+
+.sched-card__time {
+  font-family: var(--font-mono); font-weight: 700; font-size: .8rem;
+  color: var(--ink); line-height: 1.35; white-space: nowrap;
+  padding-top: 1px;
+}
+.sched-card__time span { display: block; color: var(--ink-soft); font-weight: 500; }
+
+.sched-card__body { min-width: 0; }
+.sched-card__name { font-weight: 600; font-size: 1rem; line-height: 1.25; }
+
+/* Пары ключ→значение: «Ауд. К-301», «Преподаватель Иванова Т. С.» */
+.sched-card__meta { margin: 6px 0 0; display: flex; flex-direction: column; gap: 1px; }
+.sched-card__row { display: flex; gap: .45rem; font-size: .84rem; line-height: 1.45; }
+.sched-card__row dt { flex: none; color: var(--ink-soft); }
+.sched-card__row dd { margin: 0; min-width: 0; font-weight: 500; }
+.sched-card__row dd.is-code { font-family: var(--font-mono); font-weight: 700; font-size: .82rem; letter-spacing: .01em; }
+
+.sched-card__badge {
+  align-self: start;
+  font-size: .64rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 700;
+  white-space: nowrap;
+  color: var(--accent);
+  border: 1.5px solid currentColor;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 999px; padding: .22rem .6rem;
+}
+
+/* пустой день */
+.sched-empty {
+  text-align: center;
+  color: var(--ink-soft);
+  background: var(--paper-2);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-lg);
+  padding: clamp(36px, 9vh, 72px) 24px;
+  font-size: .95rem;
+}
+.sched-empty__seal { width: 44px; height: 44px; color: var(--line-2); margin-bottom: .6rem; }
+
+@media (max-width: 480px) {
+  .sched-card { grid-template-columns: auto 1fr; }
+  .sched-card__badge { grid-column: 1 / -1; justify-self: start; margin-top: 10px; }
+}
+
+/* ============================================================
+   НАСТРОЙКИ
+   ============================================================ */
+.settings { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+.set-card {
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px 22px;
+  box-shadow: var(--shadow);
+}
+.set-card__label { font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-soft); font-weight: 600; margin: 0 0 .5rem; }
+
+.set-profile { display: flex; align-items: center; gap: 16px; }
+.set-profile__seal { width: 52px; height: 52px; color: var(--stamp); flex: none; }
+.set-profile__zach { font-family: var(--font-mono); font-weight: 700; font-size: 1.55rem; letter-spacing: .04em; line-height: 1; }
+.set-profile__sub { color: var(--ink-soft); font-size: .85rem; margin-top: .3rem; }
+
+.set-list { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.set-row { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); font-size: .92rem; }
+.set-row:last-child { border-bottom: none; }
+.set-row__k { color: var(--ink-soft); }
+.set-row__v { font-weight: 500; text-align: right; }
+.set-row__v--soon { color: var(--line-2); font-style: italic; font-weight: 400; }
+
+.set-about { text-align: center; color: var(--ink-soft); font-size: .82rem; }
+.set-about b { font-family: var(--font-display); font-weight: 700; color: var(--ink); }

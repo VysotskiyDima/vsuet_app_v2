@@ -26,15 +26,16 @@ const DASH = "—";
 // ---- элементы ----
 const $ = (sel, root = document) => root.querySelector(sel);
 const viewLogin     = $("#view-login");
-const viewRating    = $("#view-rating");
+const viewApp       = $("#view-app");
 const loginForm     = $("#login-form");
 const zachInput     = $("#zach");
 const loginBtn      = $("#login-btn");
 const loginError    = $("#login-error");
 const demoFill      = $("#demo-fill");
 const currentZach   = $("#current-zach");
-const logoutBtn     = $("#logout-btn");
+const currentZachM  = $("#current-zach-m");
 const ratingContent = $("#rating-content");
+let currentZachValue = "";
 
 // ============================================================
 // Утилиты
@@ -120,7 +121,6 @@ zachInput.addEventListener("input", () => {
 });
 
 if (demoFill) demoFill.addEventListener("click", () => { zachInput.value = "247162"; zachInput.focus(); });
-logoutBtn.addEventListener("click", closeRating);
 
 // ============================================================
 // Переключение экранов
@@ -129,20 +129,208 @@ const LAST_ZACH_KEY = "rating:lastZach";
 function rememberZach(zach) { try { localStorage.setItem(LAST_ZACH_KEY, zach); } catch (_) {} }
 
 function openRating(zach) {
+  currentZachValue = zach;
   currentZach.textContent = zach;
+  if (currentZachM) currentZachM.textContent = zach;
   rememberZach(zach);
   viewLogin.hidden = true;
-  viewRating.hidden = false;
-  window.scrollTo(0, 0);
+  viewApp.hidden = false;
+  scheduleRendered = false;
+  switchTab("rating");
   loadRating(zach);
 }
 
 function closeRating() {
-  viewRating.hidden = true;
+  viewApp.hidden = true;
   viewLogin.hidden = false;
   ratingContent.innerHTML = "";
   zachInput.focus();
   zachInput.select();
+}
+
+// ============================================================
+// Вкладки: Рейтинг / Расписание / Настройки
+// ============================================================
+const TAB_TITLES = { rating: "Рейтинг", schedule: "Расписание", settings: "Настройки" };
+// Кнопка выхода тоже живёт в тулбаре, но разделом не является — берём только вкладки.
+const navItems = document.querySelectorAll(".nav__item[data-tab]");
+const tabTitle = $("#tab-title");
+const tabTag = $("#tab-tag");
+let scheduleRendered = false;
+
+function switchTab(name) {
+  navItems.forEach((b) => {
+    const active = b.dataset.tab === name;
+    b.classList.toggle("is-active", active);
+    if (active) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  document.querySelectorAll(".tab").forEach((s) => { s.hidden = s.dataset.panel !== name; });
+  if (tabTitle) tabTitle.textContent = TAB_TITLES[name] || "";
+  // Подпись рядом с названием раздела: для расписания — группа.
+  if (tabTag) {
+    tabTag.textContent = name === "schedule" ? MOCK_GROUP : "";
+    tabTag.hidden = name !== "schedule";
+  }
+  window.scrollTo(0, 0);
+
+  if (name === "schedule" && !scheduleRendered) { renderSchedule(); scheduleRendered = true; }
+  if (name === "settings") { renderSettings(); }
+}
+
+navItems.forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+$("#logout-btn").addEventListener("click", closeRating);
+
+// ============================================================
+// Расписание (моковые данные — одинаковы для числителя и знаменателя,
+// и пока одинаковы для всех пользователей)
+// ============================================================
+const SCHED_DAYS = ["ПОНЕДЕЛЬНИК", "ВТОРНИК", "СРЕДА", "ЧЕТВЕРГ", "ПЯТНИЦА", "СУББОТА"];
+const SCHED_DOW_SHORT = { "ПОНЕДЕЛЬНИК": "Пн", "ВТОРНИК": "Вт", "СРЕДА": "Ср", "ЧЕТВЕРГ": "Чт", "ПЯТНИЦА": "Пт", "СУББОТА": "Сб" };
+const LESSON_TYPES = { lecture: "Лекция", practice: "Практика", lab: "Лаб. работа", seminar: "Семинар" };
+
+const MOCK_GROUP = "ПИ-231";
+const MOCK_SCHEDULE = {
+  "ПОНЕДЕЛЬНИК": [
+    { time: "08.00-09.35", name: "Математический анализ",       type: "lecture",  room: "К-301", teacher: "Иванова Т. С." },
+    { time: "09.45-11.20", name: "Программирование на Python",  type: "lab",      room: "А-215", teacher: "Петров А. В." },
+    { time: "11.50-13.25", name: "Дискретная математика",       type: "practice", room: "К-118", teacher: "Сидорова Е. Н." },
+  ],
+  "ВТОРНИК": [
+    { time: "09.45-11.20", name: "Базы данных",                 type: "lecture",  room: "К-204", teacher: "Кузнецов Д. И." },
+    { time: "11.50-13.25", name: "Базы данных",                 type: "lab",      room: "А-217", teacher: "Кузнецов Д. И." },
+    { time: "13.35-15.10", name: "Иностранный язык",            type: "seminar",  room: "Г-402", teacher: "Морозова И. П." },
+  ],
+  "СРЕДА": [
+    { time: "08.00-09.35", name: "Операционные системы",        type: "lecture",  room: "К-301", teacher: "Фёдоров С. А." },
+    { time: "09.45-11.20", name: "Операционные системы",        type: "practice", room: "А-215", teacher: "Фёдоров С. А." },
+    { time: "11.50-13.25", name: "Физическая культура",         type: "practice", room: "Спорткомплекс", teacher: "" },
+    { time: "13.35-15.10", name: "Философия",                   type: "lecture",  room: "Г-210", teacher: "Волкова Н. М." },
+  ],
+  "ЧЕТВЕРГ": [
+    { time: "09.45-11.20", name: "Веб-технологии",              type: "lab",      room: "А-219", teacher: "Николаев П. Р." },
+    { time: "11.50-13.25", name: "Компьютерные сети",           type: "lecture",  room: "К-204", teacher: "Егоров В. Л." },
+  ],
+  "ПЯТНИЦА": [
+    { time: "08.00-09.35", name: "Теория вероятностей",         type: "lecture",  room: "К-301", teacher: "Иванова Т. С." },
+    { time: "09.45-11.20", name: "Теория вероятностей",         type: "practice", room: "К-118", teacher: "Иванова Т. С." },
+    { time: "11.50-13.25", name: "Программная инженерия",       type: "seminar",  room: "А-215", teacher: "Петров А. В." },
+  ],
+  "СУББОТА": [
+    { time: "09.45-11.20", name: "Архитектура ЭВМ",             type: "lecture",  room: "К-204", teacher: "Егоров В. Л." },
+    { time: "11.50-13.25", name: "Веб-технологии",              type: "practice", room: "А-219", teacher: "Николаев П. Р." },
+  ],
+};
+
+let schedWeek = "numerator"; // числитель/знаменатель — данные пока одинаковы
+let schedDay = null;
+
+function currentDowIndex() {
+  const js = new Date().getDay(); // 0=вс … 6=сб
+  return (js >= 1 && js <= 6) ? js - 1 : 0; // Пн…Сб, в воскресенье открываем Пн
+}
+
+function renderSchedule() {
+  if (!schedDay) schedDay = SCHED_DAYS[currentDowIndex()];
+  const el = $("#schedule-content");
+  el.innerHTML = `
+    <div class="sched">
+      <div class="seg" role="group" aria-label="Тип недели">
+        <button class="seg__btn ${schedWeek === "numerator" ? "is-active" : ""}" type="button" data-week="numerator">Числитель</button>
+        <button class="seg__btn ${schedWeek === "denominator" ? "is-active" : ""}" type="button" data-week="denominator">Знаменатель</button>
+      </div>
+      <div class="days" role="tablist" aria-label="День недели">
+        ${SCHED_DAYS.map((d) => {
+          const cnt = (MOCK_SCHEDULE[d] || []).length;
+          return `<button class="day ${d === schedDay ? "is-active" : ""} ${cnt ? "" : "is-empty"}" type="button" data-day="${d}">
+            <span class="day__dow">${SCHED_DOW_SHORT[d]}</span>
+            <span class="day__cnt">${cnt ? cnt + " " + plural(cnt, ["пара", "пары", "пар"]) : "—"}</span>
+          </button>`;
+        }).join("")}
+      </div>
+      <div id="sched-day"></div>
+    </div>`;
+  renderSchedDay();
+
+  el.querySelectorAll(".seg__btn").forEach((b) =>
+    b.addEventListener("click", () => { schedWeek = b.dataset.week; renderSchedule(); })
+  );
+  el.querySelectorAll(".day").forEach((b) =>
+    b.addEventListener("click", () => {
+      schedDay = b.dataset.day;
+      el.querySelectorAll(".day").forEach((x) => x.classList.toggle("is-active", x === b));
+      renderSchedDay();
+    })
+  );
+}
+
+function renderSchedDay() {
+  const wrap = $("#sched-day");
+  const lessons = MOCK_SCHEDULE[schedDay] || [];
+  const dowFull = schedDay.charAt(0) + schedDay.slice(1).toLowerCase();
+  const weekLabel = schedWeek === "numerator" ? "Числитель" : "Знаменатель";
+
+  let html = `
+    <div class="sched__meta">
+      <h2 class="sched__day-title">${dowFull}</h2>
+      <span class="sched__week-tag">${weekLabel}</span>
+    </div>`;
+
+  if (!lessons.length) {
+    html += `<div class="sched-empty">
+      <svg class="sched-empty__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini"/></svg>
+      <div>В этот день занятий нет</div>
+    </div>`;
+  } else {
+    html += `<div class="sched-list">${lessons.map((l) => {
+      const [start, end] = l.time.split("-");
+      const teacher = l.teacher
+        ? `<div class="sched-card__row"><dt>Преподаватель</dt><dd>${escapeHtml(l.teacher)}</dd></div>`
+        : "";
+      return `<article class="sched-card" data-type="${l.type}">
+        <div class="sched-card__time">${escapeHtml(start)}<span>${escapeHtml(end)}</span></div>
+        <div class="sched-card__body">
+          <div class="sched-card__name">${escapeHtml(l.name)}</div>
+          <dl class="sched-card__meta">
+            <div class="sched-card__row"><dt>Ауд.</dt><dd class="is-code">${escapeHtml(l.room)}</dd></div>
+            ${teacher}
+          </dl>
+        </div>
+        <span class="sched-card__badge">${LESSON_TYPES[l.type] || "Другое"}</span>
+      </article>`;
+    }).join("")}</div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+// ============================================================
+// Настройки: профиль + место под доп. информацию
+// ============================================================
+function renderSettings() {
+  const el = $("#settings-content");
+  el.innerHTML = `
+    <div class="settings">
+      <div class="set-card">
+        <div class="set-profile">
+          <svg class="set-profile__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini"/></svg>
+          <div>
+            <div class="set-profile__zach">№ ${escapeHtml(currentZachValue || "—")}</div>
+            <div class="set-profile__sub">Зачётная книжка</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <p class="set-card__label">Профиль</p>
+        <div class="set-list">
+          <div class="set-row"><span class="set-row__k">Группа</span><span class="set-row__v set-row__v--soon">появится позже</span></div>
+          <div class="set-row"><span class="set-row__k">ФИО</span><span class="set-row__v set-row__v--soon">появится позже</span></div>
+          <div class="set-row"><span class="set-row__k">Уведомления об изменении рейтинга</span><span class="set-row__v set-row__v--soon">появится позже</span></div>
+        </div>
+      </div>
+
+      <p class="set-about">Рейтинг <b>успеваемости</b> · ВГУИТ</p>
+    </div>`;
 }
 
 // ============================================================
