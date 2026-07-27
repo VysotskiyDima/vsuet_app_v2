@@ -32,8 +32,6 @@ const zachInput     = $("#zach");
 const loginBtn      = $("#login-btn");
 const loginError    = $("#login-error");
 const demoFill      = $("#demo-fill");
-const currentZach   = $("#current-zach");
-const currentZachM  = $("#current-zach-m");
 const ratingContent = $("#rating-content");
 let currentZachValue = "";
 
@@ -130,8 +128,6 @@ function rememberZach(zach) { try { localStorage.setItem(LAST_ZACH_KEY, zach); }
 
 function openRating(zach) {
   currentZachValue = zach;
-  currentZach.textContent = zach;
-  if (currentZachM) currentZachM.textContent = zach;
   rememberZach(zach);
   viewLogin.hidden = true;
   viewApp.hidden = false;
@@ -151,11 +147,8 @@ function closeRating() {
 // ============================================================
 // Вкладки: Рейтинг / Расписание / Настройки
 // ============================================================
-const TAB_TITLES = { rating: "Рейтинг", schedule: "Расписание", settings: "Настройки" };
 // Кнопка выхода тоже живёт в тулбаре, но разделом не является — берём только вкладки.
 const navItems = document.querySelectorAll(".nav__item[data-tab]");
-const tabTitle = $("#tab-title");
-const tabTag = $("#tab-tag");
 let scheduleRendered = false;
 
 function switchTab(name) {
@@ -166,12 +159,6 @@ function switchTab(name) {
     else b.removeAttribute("aria-current");
   });
   document.querySelectorAll(".tab").forEach((s) => { s.hidden = s.dataset.panel !== name; });
-  if (tabTitle) tabTitle.textContent = TAB_TITLES[name] || "";
-  // Подпись рядом с названием раздела: для расписания — группа.
-  if (tabTag) {
-    tabTag.textContent = name === "schedule" ? MOCK_GROUP : "";
-    tabTag.hidden = name !== "schedule";
-  }
   window.scrollTo(0, 0);
 
   if (name === "schedule" && !scheduleRendered) { renderSchedule(); scheduleRendered = true; }
@@ -235,9 +222,11 @@ function renderSchedule() {
   const el = $("#schedule-content");
   el.innerHTML = `
     <div class="sched">
-      <div class="seg" role="group" aria-label="Тип недели">
-        <button class="seg__btn ${schedWeek === "numerator" ? "is-active" : ""}" type="button" data-week="numerator">Числитель</button>
-        <button class="seg__btn ${schedWeek === "denominator" ? "is-active" : ""}" type="button" data-week="denominator">Знаменатель</button>
+      <div class="sched__head">
+        <div class="seg" role="group" aria-label="Тип недели">
+          <button class="seg__btn ${schedWeek === "numerator" ? "is-active" : ""}" type="button" data-week="numerator">Числитель</button>
+          <button class="seg__btn ${schedWeek === "denominator" ? "is-active" : ""}" type="button" data-week="denominator">Знаменатель</button>
+        </div>
       </div>
       <div class="days" role="tablist" aria-label="День недели">
         ${SCHED_DAYS.map((d) => {
@@ -304,33 +293,64 @@ function renderSchedDay() {
 }
 
 // ============================================================
-// Настройки: профиль + место под доп. информацию
+// Тема оформления
+// ============================================================
+const THEME_KEY = "rating:theme";
+// Держим в синхроне с --paper в styles.css: этим цветом система красит
+// адресную строку и статус-бар установленного PWA.
+const THEME_COLORS = { light: "#E9EAE3", dark: "#14161A" };
+const themeMeta = document.querySelector('meta[name="theme-color"]');
+
+function currentTheme() {
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+
+function applyTheme(name) {
+  document.documentElement.dataset.theme = name;
+  if (themeMeta) themeMeta.setAttribute("content", THEME_COLORS[name]);
+  try { localStorage.setItem(THEME_KEY, name); } catch (_) {}
+}
+
+// Инлайн-скрипт в <head> выставил data-theme, но не трогал meta — догоняем.
+if (themeMeta) themeMeta.setAttribute("content", THEME_COLORS[currentTheme()]);
+
+// ============================================================
+// Настройки: профиль + оформление
 // ============================================================
 function renderSettings() {
   const el = $("#settings-content");
+  const theme = currentTheme();
   el.innerHTML = `
     <div class="settings">
       <div class="set-card">
-        <div class="set-profile">
-          <svg class="set-profile__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini"/></svg>
-          <div>
-            <div class="set-profile__zach">№ ${escapeHtml(currentZachValue || "—")}</div>
-            <div class="set-profile__sub">Зачётная книжка</div>
+        <p class="set-card__label">Профиль</p>
+        <div class="set-list">
+          <div class="set-row">
+            <span class="set-row__k">Зачётная книжка</span>
+            <span class="set-row__v set-row__v--code">№ ${escapeHtml(currentZachValue || "—")}</span>
+          </div>
+          <div class="set-row">
+            <span class="set-row__k">Группа</span>
+            <span class="set-row__v set-row__v--code">${escapeHtml(MOCK_GROUP)}</span>
           </div>
         </div>
       </div>
 
       <div class="set-card">
-        <p class="set-card__label">Профиль</p>
-        <div class="set-list">
-          <div class="set-row"><span class="set-row__k">Группа</span><span class="set-row__v set-row__v--soon">появится позже</span></div>
-          <div class="set-row"><span class="set-row__k">ФИО</span><span class="set-row__v set-row__v--soon">появится позже</span></div>
-          <div class="set-row"><span class="set-row__k">Уведомления об изменении рейтинга</span><span class="set-row__v set-row__v--soon">появится позже</span></div>
+        <p class="set-card__label">Оформление</p>
+        <div class="set-row set-row--control">
+          <span class="set-row__k">Тема</span>
+          <div class="seg" role="group" aria-label="Тема оформления">
+            <button class="seg__btn ${theme === "light" ? "is-active" : ""}" type="button" data-set-theme="light">Светлая</button>
+            <button class="seg__btn ${theme === "dark" ? "is-active" : ""}" type="button" data-set-theme="dark">Тёмная</button>
+          </div>
         </div>
       </div>
-
-      <p class="set-about">Рейтинг <b>успеваемости</b> · ВГУИТ</p>
     </div>`;
+
+  el.querySelectorAll("[data-set-theme]").forEach((b) =>
+    b.addEventListener("click", () => { applyTheme(b.dataset.setTheme); renderSettings(); })
+  );
 }
 
 // ============================================================

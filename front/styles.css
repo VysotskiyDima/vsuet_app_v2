@@ -16,11 +16,13 @@
   --line-2:   #BFC1B5;  /* акцентная линовка */
   --stamp:    #2E2BD6;  /* ультрамарин — подпись/печать/акцент */
   --stamp-ink:#211FA8;  /* нажатие/hover акцента */
+  --on-stamp: #FFFFFF;  /* текст поверх заливки ультрамарином */
 
   --good: #2E7D4F;  /* Отл / Зачтено */
   --ok:   #5C7A2E;  /* Хор */
   --mid:  #B0731A;  /* Удовл */
   --bad:  #C03A2D;  /* Неуд / Не зачтено */
+  --seminar: #6C4DBE;  /* тип пары «семинар» */
 
   --font-display: 'Unbounded', system-ui, sans-serif;
   --font-body: 'Golos Text', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -31,6 +33,32 @@
   --r-lg: 14px;
 
   --shadow: 0 1px 0 rgba(24,26,23,.04), 0 18px 40px -28px rgba(24,26,23,.45);
+  --scrim: rgba(24,26,23,.5);  /* затемнение под попапом */
+}
+
+/* Тёмная тема: та же логика «бумага → чернила → печать», только бумага
+   становится ночной, а ультрамарин светлеет, чтобы остаться читаемым.
+   Переключается атрибутом data-theme на <html> (см. app.js). */
+:root[data-theme="dark"] {
+  --paper:    #14161A;
+  --paper-2:  #1C1F25;
+  --paper-3:  #242830;
+  --ink:      #E7E8E2;
+  --ink-soft: #9BA096;
+  --line:     #2F343C;
+  --line-2:   #454C57;
+  --stamp:    #8886F5;
+  --stamp-ink:#A8A6FF;
+  --on-stamp: #10121A;
+
+  --good: #4FB07A;
+  --ok:   #93BB60;
+  --mid:  #D9A441;
+  --bad:  #E8756A;
+  --seminar: #A78BF0;
+
+  --shadow: 0 1px 0 rgba(0,0,0,.25), 0 18px 40px -28px rgba(0,0,0,.9);
+  --scrim: rgba(0,0,0,.62);
 }
 
 * { box-sizing: border-box; }
@@ -50,7 +78,7 @@ body {
 
 button { font-family: inherit; }
 
-::selection { background: var(--stamp); color: #fff; }
+::selection { background: var(--stamp); color: var(--on-stamp); }
 
 :focus-visible {
   outline: 2.5px solid var(--stamp);
@@ -229,7 +257,7 @@ button { font-family: inherit; }
 }
 .field__input:focus {
   border-color: var(--stamp);
-  box-shadow: 0 0 0 4px rgba(46,43,214,.12);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--stamp) 20%, transparent);
 }
 .field__input::placeholder { color: var(--line-2); letter-spacing: .08em; }
 
@@ -612,7 +640,6 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 }
 
 @media (max-width: 350px) {
-  .brand__name-sub { display: none; }
 }
 
 /* ============================================================
@@ -627,8 +654,11 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 }
 
 .app__main { min-width: 0; }
-/* Внутри приложения отступ сверху задаёт шапка раздела — контенту столько не нужно */
-.app__main .content { padding-top: clamp(20px, 3vw, 32px); }
+/* На десктопе отступ сверху задаёт шапка раздела — контенту столько не нужно.
+   На мобилке шапки нет, поэтому там работает базовый отступ .content. */
+@media (min-width: 768px) {
+  .app__main .content { padding-top: clamp(20px, 3vw, 32px); }
+}
 /* на мобилке снизу фиксированная навигация — освобождаем место */
 @media (max-width: 767px) {
   .app__main { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
@@ -679,11 +709,8 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.02rem;
-  letter-spacing: -.01em;
+  letter-spacing: -.02em;
   line-height: 1.05;
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0 .35rem;
 }
 @media (max-width: 767px) { .nav__brand { display: none; } }
 
@@ -761,53 +788,14 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
   }
 }
 
-/* Подвал сайдбара — зачётка (только десктоп) */
-.nav__foot { margin-top: auto; padding: 14px 12px 2px; border-top: 1px solid var(--line); line-height: 1.15; }
-.nav__id-label { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
-.nav__id-num { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; }
-@media (max-width: 767px) { .nav__foot { display: none; } }
-
-/* --- Шапка раздела (название + контекст, например группа) --- */
-.app__topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 12px clamp(16px, 4vw, 40px);
-  background: color-mix(in srgb, var(--paper) 86%, transparent);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
-}
-.app__topbar-head { margin: 0; display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
-.app__topbar-title { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em; }
-.app__topbar-tag {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: .78rem;
-  letter-spacing: .04em;
-  color: var(--stamp-ink);
-  background: color-mix(in srgb, var(--stamp) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--stamp) 28%, transparent);
-  border-radius: 999px;
-  padding: .18rem .6rem;
-}
-.app__topbar-id { flex: none; font-family: var(--font-mono); font-weight: 700; font-size: .95rem; color: var(--ink-soft); }
-/* На узких экранах шапке хватает раздела и группы — номер есть в настройках */
-@media (max-width: 359px) { .app__topbar-id { display: none; } }
-/* На десктопе номер зачётки уже есть в подвале сайдбара — в шапке не дублируем */
-@media (min-width: 768px) {
-  .app__topbar { padding: 18px clamp(16px, 4vw, 40px) 16px; }
-  .app__topbar-title { font-size: 1.3rem; }
-  .app__topbar-id { display: none; }
-}
 
 /* ============================================================
    РАСПИСАНИЕ
    ============================================================ */
 .sched { max-width: 720px; margin: 0 auto; }
+
+/* Шапка расписания — переключатель недели */
+.sched__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 
 /* Переключатель Числитель/Знаменатель */
 .seg {
@@ -826,7 +814,7 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
   transition: background .16s ease, color .16s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.seg__btn.is-active { background: var(--stamp); color: #fff; }
+.seg__btn.is-active { background: var(--stamp); color: var(--on-stamp); }
 
 /* Дни недели */
 .days { display: flex; gap: 6px; margin: 16px 0 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
@@ -875,7 +863,7 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 .sched-card[data-type="lecture"]  { --accent: var(--stamp); }
 .sched-card[data-type="practice"] { --accent: var(--mid); }
 .sched-card[data-type="lab"]      { --accent: var(--good); }
-.sched-card[data-type="seminar"]  { --accent: #6C4DBE; }
+.sched-card[data-type="seminar"]  { --accent: var(--seminar); }
 
 .sched-card__time {
   font-family: var(--font-mono); font-weight: 700; font-size: .8rem;
@@ -935,17 +923,10 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 }
 .set-card__label { font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-soft); font-weight: 600; margin: 0 0 .5rem; }
 
-.set-profile { display: flex; align-items: center; gap: 16px; }
-.set-profile__seal { width: 52px; height: 52px; color: var(--stamp); flex: none; }
-.set-profile__zach { font-family: var(--font-mono); font-weight: 700; font-size: 1.55rem; letter-spacing: .04em; line-height: 1; }
-.set-profile__sub { color: var(--ink-soft); font-size: .85rem; margin-top: .3rem; }
-
 .set-list { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 .set-row { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); font-size: .92rem; }
 .set-row:last-child { border-bottom: none; }
+.set-row--control { align-items: center; padding: .2rem 0; border-bottom: none; }
 .set-row__k { color: var(--ink-soft); }
 .set-row__v { font-weight: 500; text-align: right; }
-.set-row__v--soon { color: var(--line-2); font-style: italic; font-weight: 400; }
-
-.set-about { text-align: center; color: var(--ink-soft); font-size: .82rem; }
-.set-about b { font-family: var(--font-display); font-weight: 700; color: var(--ink); }
+.set-row__v--code { font-family: var(--font-mono); font-weight: 700; letter-spacing: .04em; }

@@ -10,6 +10,16 @@
   <link rel="apple-touch-icon" href="resources/logo-192.png" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#E9EAE3" />
+  <script>
+    // Тема ставится до первой отрисовки, иначе на тёмной теме успевает
+    // мигнуть светлый фон. Без сохранённого выбора идём за настройкой системы.
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem("rating:theme"); } catch (e) {}
+      var dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Рейтинг" />
@@ -18,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=26" />
 
   <style>
     /* ── Попап КТ ─────────────────────────────────────────── */
@@ -29,8 +39,8 @@
     }
     .rt-total--clickable:hover,
     .rt-total--clickable:focus {
-      background: rgba(46, 43, 214, 0.08);
-      outline: 2px solid rgba(46, 43, 214, 0.4);
+      background: color-mix(in srgb, var(--stamp) 10%, transparent);
+      outline: 2px solid color-mix(in srgb, var(--stamp) 45%, transparent);
       outline-offset: -2px;
     }
 
@@ -51,14 +61,14 @@
     .kt-popup__backdrop {
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: var(--scrim);
       backdrop-filter: blur(2px);
     }
 
     .kt-popup__box {
       position: relative;
       z-index: 1;
-      background: #fff;
+      background: var(--paper-2);
       /* мобилка — bottom sheet */
       border-radius: 18px 18px 0 0;
       padding: 8px 20px 32px;
@@ -83,7 +93,7 @@
     /* drag handle */
     .kt-popup__handle {
       width: 40px; height: 4px;
-      background: #ddd; border-radius: 2px;
+      background: var(--line-2); border-radius: 2px;
       margin: 12px auto 20px;
     }
     @media (min-width: 600px) { .kt-popup__handle { display: none; } }
@@ -93,13 +103,13 @@
       top: 14px; right: 16px;
       background: none; border: none;
       font-size: 18px; line-height: 1;
-      cursor: pointer; color: #888;
+      cursor: pointer; color: var(--ink-soft);
       min-width: 44px; min-height: 44px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 8px;
       transition: background 0.15s, color 0.15s;
     }
-    .kt-popup__close:hover { background: #f0f0f0; color: #222; }
+    .kt-popup__close:hover { background: var(--paper-3); color: var(--ink); }
 
     .kt-popup__title {
       margin: 0 0 18px;
@@ -128,11 +138,11 @@
     .kt-popup__table td {
       padding: 11px 10px;
       text-align: left;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--line);
       vertical-align: middle;
     }
     .kt-popup__table th {
-      font-weight: 600; color: #555;
+      font-weight: 600; color: var(--ink-soft);
       font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em;
     }
     .kt-popup__table th.kt-popup__col-weight,
@@ -152,12 +162,12 @@
 
     .kt-popup__total {
       margin-top: 16px; padding-top: 14px;
-      border-top: 2px solid #eee;
-      font-size: 0.95rem; text-align: right; color: #333;
+      border-top: 2px solid var(--line);
+      font-size: 0.95rem; text-align: right; color: var(--ink);
     }
     .kt-popup__total strong {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.1rem; color: #2E2BD6; margin-left: 6px;
+      font-size: 1.1rem; color: var(--stamp); margin-left: 6px;
     }
 
     /* ── Sticky-таблица рейтинга ──────────────────────────── */
@@ -171,10 +181,10 @@
       -webkit-overflow-scrolling: touch;
       /* тень-подсказка справа когда есть что скроллить */
       background:
-        linear-gradient(to right, white 0%, transparent 100%) 0 0 / 20px 100% no-repeat local,
-        linear-gradient(to left,  white 0%, transparent 100%) 100% 0 / 20px 100% no-repeat local,
-        linear-gradient(to right, rgba(0,0,0,0.08) 0%, transparent 100%) 0 0 / 12px 100% no-repeat scroll,
-        linear-gradient(to left,  rgba(0,0,0,0.08) 0%, transparent 100%) 100% 0 / 12px 100% no-repeat scroll;
+        linear-gradient(to right, var(--paper-2) 0%, transparent 100%) 0 0 / 20px 100% no-repeat local,
+        linear-gradient(to left,  var(--paper-2) 0%, transparent 100%) 100% 0 / 20px 100% no-repeat local,
+        linear-gradient(to right, color-mix(in srgb, var(--ink) 10%, transparent) 0%, transparent 100%) 0 0 / 12px 100% no-repeat scroll,
+        linear-gradient(to left,  color-mix(in srgb, var(--ink) 10%, transparent) 0%, transparent 100%) 100% 0 / 12px 100% no-repeat scroll;
     }
 
     .rt {
@@ -188,9 +198,9 @@
       position: sticky;
       left: 0;
       z-index: 2;
-      background: #fff;
+      background: var(--paper-2);
       /* правая граница вместо border-collapse */
-      box-shadow: 2px 0 4px -1px rgba(0,0,0,0.10);
+      box-shadow: 2px 0 4px -1px color-mix(in srgb, var(--ink) 12%, transparent);
     }
     /* Заголовок «Дисциплина» — выше остальных sticky */
     .rt thead .rt-subject {
@@ -295,7 +305,7 @@
     <nav class="nav" aria-label="Разделы">
       <div class="nav__brand">
         <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
-        <span class="brand__name">Рейтинг <span class="brand__name-sub">успеваемости</span></span>
+        <span class="brand__name">UniversityApp</span>
       </div>
 
       <div class="nav__list">
@@ -313,30 +323,16 @@
         </button>
       </div>
 
-      <!-- Зачётка (только десктоп), под ней — выход.
-           На мобилке подвал скрыт, и выход встаёт четвёртым пунктом панели. -->
-      <div class="nav__foot">
-        <span class="nav__id-label">Зачётная книжка</span>
-        <span class="nav__id-num">№&nbsp;<span id="current-zach">—</span></span>
-      </div>
-
+      <!-- Выход: на десктопе внизу сайдбара, на мобилке — четвёртый пункт панели -->
       <button class="nav__item nav__item--logout" type="button" id="logout-btn" aria-label="Выйти из зачётки">
         <svg class="nav__icon" viewBox="0 0 15 15" aria-hidden="true"><use href="#ic-logout" /></svg>
         <span class="nav__label">Выход</span>
       </button>
     </nav>
 
-    <!-- Основная область -->
+    <!-- Основная область. Шапки раздела нет: активный раздел называет
+         сама навигация, а группу показывает экран расписания. -->
     <div class="app__main">
-      <!-- Шапка раздела: название + контекст раздела (например, группа) -->
-      <header class="app__topbar">
-        <h1 class="app__topbar-head">
-          <span class="app__topbar-title" id="tab-title">Рейтинг</span>
-          <span class="app__topbar-tag" id="tab-tag" hidden></span>
-        </h1>
-        <span class="app__topbar-id" aria-label="Зачётная книжка">№&nbsp;<span id="current-zach-m">—</span></span>
-      </header>
-
       <!-- Рейтинг -->
       <section class="tab" id="tab-rating" data-panel="rating" aria-label="Рейтинг">
         <main id="rating-content" class="content" aria-live="polite"></main>
@@ -354,6 +350,8 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Версия обязательна: service worker отдаёт .js по cache-first, и без смены
+       URL свежий index.html склеивается со старым скриптом из кэша. -->
+  <script src="app.js?v=26"></script>
 </body>
 </html>
