@@ -1,0 +1,163 @@
+/* ============================================================
+   ОБОЛОЧКА ПРИЛОЖЕНИЯ
+   Сетка «навигация + контент» и сама навигация.
+   Здесь же живёт вся разница десктопа и мобилки: на ширине >=768px
+   навигация — колонка слева, ниже — фиксированная панель снизу.
+   ============================================================ */
+/* Бренд в шапке навигации */
+.brand__seal { width: 30px; height: 30px; color: var(--stamp); flex: none; }
+.brand__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+}
+
+/* ============================================================
+   ПРИЛОЖЕНИЕ · оболочка + навигация (сайдбар/нижняя панель)
+   Токены и дизайн-язык те же: бумага, ультрамариновая печать.
+   ============================================================ */
+
+/* --- оболочка --- */
+.app { min-height: 100dvh; }
+@media (min-width: 768px) {
+  .app { display: grid; grid-template-columns: 268px 1fr; }
+}
+
+.app__main { min-width: 0; }
+/* На десктопе отступ сверху задаёт шапка раздела — контенту столько не нужно.
+   На мобилке шапки нет, поэтому там работает базовый отступ .content. */
+@media (min-width: 768px) {
+  .app__main .content { padding-top: clamp(20px, 3vw, 32px); }
+}
+/* на мобилке снизу фиксированная навигация — освобождаем место */
+@media (max-width: 767px) {
+  .app__main { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* --- Навигация --- */
+.nav {
+  display: flex;
+  background: var(--paper-2);
+}
+
+/* Десктоп: вертикальный сайдбар */
+@media (min-width: 768px) {
+  .nav {
+    flex-direction: column;
+    gap: .4rem;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    padding: 22px 16px;
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+  }
+}
+
+/* Мобилка: нижняя панель */
+@media (max-width: 767px) {
+  .nav {
+    position: fixed;
+    z-index: 30;
+    left: 0; right: 0; bottom: 0;
+    gap: 2px; /* выход — сосед списка, а не его пункт: держим шаг тот же */
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--paper-2) 92%, transparent);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Бренд в сайдбаре (только десктоп) */
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: 4px 10px 18px;
+}
+.nav__brand .brand__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -.02em;
+  line-height: 1.05;
+}
+@media (max-width: 767px) { .nav__brand { display: none; } }
+
+/* Список пунктов */
+.nav__list { display: flex; }
+@media (min-width: 768px) {
+  /* flex:1 — чтобы зачётка с выходом прижимались к низу сайдбара */
+  .nav__list { flex: 1; flex-direction: column; gap: .3rem; }
+}
+@media (max-width: 767px) {
+  /* flex:3 на три раздела + flex:1 у выхода рядом = четыре равные доли панели */
+  .nav__list { flex: 3; gap: 2px; }
+}
+
+/* Пункт навигации */
+.nav__item {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  display: flex;
+  align-items: center;
+  transition: background .16s ease, color .16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav__icon { width: 22px; height: 22px; flex: none; }
+
+/* Десктоп: иконка + подпись в строку */
+@media (min-width: 768px) {
+  .nav__item {
+    gap: .75rem;
+    padding: .62rem .8rem;
+    border-radius: var(--r-md);
+    font-size: .95rem;
+    font-weight: 500;
+    border-left: 3px solid transparent;
+  }
+  .nav__item:hover { background: var(--paper-3); color: var(--ink); }
+  .nav__item.is-active {
+    background: color-mix(in srgb, var(--stamp) 10%, var(--paper-3));
+    color: var(--stamp-ink);
+    font-weight: 600;
+    border-left-color: var(--stamp);
+  }
+}
+
+/* Мобилка: иконка над подписью, равные доли */
+@media (max-width: 767px) {
+  .nav__item {
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 4px;
+    border-radius: var(--r-md);
+    font-size: .66rem;
+    font-weight: 500;
+    letter-spacing: .01em;
+    min-height: 52px;
+    justify-content: center;
+  }
+  .nav__item.is-active { color: var(--stamp-ink); }
+  .nav__item.is-active .nav__icon { color: var(--stamp); }
+}
+
+/* Выход — не раздел, а действие: держим в тулбаре, но отделяем цветом.
+   На десктопе стоит под номером зачётки, на мобилке — четвёртый пункт панели. */
+.nav__item--logout { color: var(--bad); }
+@media (min-width: 768px) {
+  .nav__item--logout { margin-top: 6px; }
+  .nav__item--logout:hover {
+    background: color-mix(in srgb, var(--bad) 9%, transparent);
+    color: var(--bad);
+  }
+}

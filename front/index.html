@@ -3,232 +3,48 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Рейтинг успеваемости</title>
+  <title>UniversityApp</title>
   <meta name="description" content="Рейтинг успеваемости студентов по номеру зачётной книжки." />
 
   <link rel="icon" type="image/svg+xml" href="resources/logo.svg" />
   <link rel="apple-touch-icon" href="resources/logo-192.png" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#E9EAE3" />
+  <script>
+    // Единственный код вне модулей: он обязан отработать ДО первой отрисовки.
+    // Модули (type="module") выполняются только после разбора HTML, к тому
+    // моменту страница уже нарисована — и без этих двух подсказок пользователь
+    // успел бы увидеть светлый фон на тёмной теме и экран входа при живой сессии.
+    (function () {
+      var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+
+      var savedTheme = read("rating:theme");
+      var dark = savedTheme ? savedTheme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+
+      // data-boot читает css/base.css и прячет ненужный экран; main.js снимает
+      // атрибут, как только берёт управление на себя.
+      document.documentElement.dataset.boot = read("rating:lastZach") ? "app" : "login";
+    })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Рейтинг" />
+  <meta name="apple-mobile-web-app-title" content="UniversityApp" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=15" />
-
-  <style>
-    /* ── Попап КТ ─────────────────────────────────────────── */
-    .rt-total--clickable {
-      cursor: pointer;
-      text-decoration: none;
-      transition: background 0.15s;
-    }
-    .rt-total--clickable:hover,
-    .rt-total--clickable:focus {
-      background: rgba(46, 43, 214, 0.08);
-      outline: 2px solid rgba(46, 43, 214, 0.4);
-      outline-offset: -2px;
-    }
-
-    /* ── Popup: bottom-sheet на мобилке, центр на десктопе ── */
-    .kt-popup {
-      position: fixed;
-      inset: 0;
-      z-index: 1000;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-    }
-    @media (min-width: 600px) {
-      .kt-popup { align-items: center; }
-    }
-    .kt-popup[hidden] { display: none; }
-
-    .kt-popup__backdrop {
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(2px);
-    }
-
-    .kt-popup__box {
-      position: relative;
-      z-index: 1;
-      background: #fff;
-      /* мобилка — bottom sheet */
-      border-radius: 18px 18px 0 0;
-      padding: 8px 20px 32px;
-      width: 100%;
-      max-height: 85vh;
-      overflow-y: auto;
-      overscroll-behavior-y: contain;
-      box-shadow: 0 -4px 40px rgba(0,0,0,0.18);
-    }
-    @media (min-width: 600px) {
-      .kt-popup__box {
-        border-radius: 14px;
-        padding: 28px 32px 24px;
-        min-width: 320px;
-        max-width: 460px;
-        width: 90%;
-        max-height: none;
-        box-shadow: 0 12px 48px rgba(0,0,0,0.22);
-      }
-    }
-
-    /* drag handle */
-    .kt-popup__handle {
-      width: 40px; height: 4px;
-      background: #ddd; border-radius: 2px;
-      margin: 12px auto 20px;
-    }
-    @media (min-width: 600px) { .kt-popup__handle { display: none; } }
-
-    .kt-popup__close {
-      position: absolute;
-      top: 14px; right: 16px;
-      background: none; border: none;
-      font-size: 18px; line-height: 1;
-      cursor: pointer; color: #888;
-      min-width: 44px; min-height: 44px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 8px;
-      transition: background 0.15s, color 0.15s;
-    }
-    .kt-popup__close:hover { background: #f0f0f0; color: #222; }
-
-    .kt-popup__title {
-      margin: 0 0 18px;
-      font-family: 'Golos Text', sans-serif;
-      font-size: 1rem; font-weight: 700;
-      line-height: 1.35;
-    }
-
-    @media (min-width: 600px) {
-      .kt-popup__title { padding-right: 40px; }
-    }
-    @media (max-width: 599px) {
-      .kt-popup__close { display: none; }
-      .kt-popup__title { text-align: center; }
-    }
-
-    .kt-popup__table {
-      width: 100%; border-collapse: collapse;
-      font-size: 0.9rem; table-layout: fixed;
-    }
-    .kt-popup__col-name   { width: 55%; }
-    .kt-popup__col-weight { width: 22%; }
-    .kt-popup__col-score  { width: 23%; }
-
-    .kt-popup__table th,
-    .kt-popup__table td {
-      padding: 11px 10px;
-      text-align: left;
-      border-bottom: 1px solid #eee;
-      vertical-align: middle;
-    }
-    .kt-popup__table th {
-      font-weight: 600; color: #555;
-      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em;
-    }
-    .kt-popup__table th.kt-popup__col-weight,
-    .kt-popup__table th.kt-popup__col-score,
-    .kt-popup__table td.kt-popup__col-weight,
-    .kt-popup__table td.kt-popup__col-score {
-      text-align: center;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.88rem;
-    }
-    .kt-popup__table th.kt-popup__col-weight,
-    .kt-popup__table th.kt-popup__col-score {
-      font-family: 'Golos Text', sans-serif;
-      font-size: 0.78rem;
-    }
-    .kt-popup__table tbody tr:last-child td { border-bottom: none; }
-
-    .kt-popup__total {
-      margin-top: 16px; padding-top: 14px;
-      border-top: 2px solid #eee;
-      font-size: 0.95rem; text-align: right; color: #333;
-    }
-    .kt-popup__total strong {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.1rem; color: #2E2BD6; margin-left: 6px;
-    }
-
-    /* ── Sticky-таблица рейтинга ──────────────────────────── */
-
-    /*
-      Обёртка с горизонтальным скроллом.
-      overflow-x: auto — скроллится только таблица, не вся страница.
-    */
-    .rt-scroll {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      /* тень-подсказка справа когда есть что скроллить */
-      background:
-        linear-gradient(to right, white 0%, transparent 100%) 0 0 / 20px 100% no-repeat local,
-        linear-gradient(to left,  white 0%, transparent 100%) 100% 0 / 20px 100% no-repeat local,
-        linear-gradient(to right, rgba(0,0,0,0.08) 0%, transparent 100%) 0 0 / 12px 100% no-repeat scroll,
-        linear-gradient(to left,  rgba(0,0,0,0.08) 0%, transparent 100%) 100% 0 / 12px 100% no-repeat scroll;
-    }
-
-    .rt {
-      /* важно: border-collapse ломает sticky, нужен separate */
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-
-    /* Колонка «Дисциплина» — прилипает слева */
-    .rt .rt-subject {
-      position: sticky;
-      left: 0;
-      z-index: 2;
-      background: #fff;
-      /* правая граница вместо border-collapse */
-      box-shadow: 2px 0 4px -1px rgba(0,0,0,0.10);
-    }
-    /* Заголовок «Дисциплина» — выше остальных sticky */
-    .rt thead .rt-subject {
-      z-index: 3;
-    }
-
-    /* На мобилке сужаем колонку названия */
-    .rt .rt-subject {
-      min-width: 130px;
-      max-width: 160px;
-      white-space: normal;
-      word-break: break-word;
-      font-size: 0.82rem;
-      line-height: 1.3;
-    }
-    @media (min-width: 640px) {
-      .rt .rt-subject {
-        min-width: 180px;
-        max-width: 240px;
-        font-size: inherit;
-      }
-    }
-
-    /* Остальные ячейки таблицы — убираем лишние отступы на мобилке */
-    @media (max-width: 639px) {
-      .rt thead th,
-      .rt tbody td {
-        padding: 8px 10px;
-        font-size: 0.82rem;
-      }
-      .rt-caption { font-size: 0.78rem; }
-    }
-
-
-
-    /* ── Инпут — не зумить на iOS (font-size >= 16px) ──────── */
-    #zach { font-size: 1rem !important; }
-  </style>
+  <!-- Стили по экранам. Порядок важен: токены → база → общие элементы → экраны. -->
+  <link rel="stylesheet" href="css/tokens.css?v=36" />
+  <link rel="stylesheet" href="css/base.css?v=36" />
+  <link rel="stylesheet" href="css/controls.css?v=36" />
+  <link rel="stylesheet" href="css/login.css?v=36" />
+  <link rel="stylesheet" href="css/app-shell.css?v=36" />
+  <link rel="stylesheet" href="css/rating.css?v=36" />
+  <link rel="stylesheet" href="css/kt-popup.css?v=36" />
+  <link rel="stylesheet" href="css/schedule.css?v=36" />
+  <link rel="stylesheet" href="css/settings.css?v=36" />
 </head>
 <body ontouchstart="">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -237,16 +53,34 @@
       <circle cx="100" cy="100" r="74" fill="none" stroke="currentColor" stroke-width="3" />
       <path d="M100 56 L113 87 L144 100 L113 113 L100 144 L87 113 L56 100 L87 87 Z" fill="currentColor" />
     </symbol>
+    <symbol id="ic-rating" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 20.5h17" /><path d="M6.5 20.5V12" /><path d="M12 20.5V4.5" /><path d="M17.5 20.5v-6" />
+      </g>
+    </symbol>
+    <symbol id="ic-schedule" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2.2" /><path d="M3.5 9.5h17M8 3.2v3.6M16 3.2v3.6" />
+      </g>
+    </symbol>
+    <symbol id="ic-settings" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.98 5.77L10.39 2.89L13.61 2.89L14.02 5.77L14.97 6.16L17.31 4.42L19.58 6.69L17.84 9.03L18.23 9.98L21.11 10.39L21.11 13.61L18.23 14.02L17.84 14.97L19.58 17.31L17.31 19.58L14.97 17.84L14.02 18.23L13.61 21.11L10.39 21.11L9.98 18.23L9.03 17.84L6.69 19.58L4.42 17.31L6.16 14.97L5.77 14.02L2.89 13.61L2.89 10.39L5.77 9.98L6.16 9.03L4.42 6.69L6.69 4.42L9.03 6.16Z" />
+        <circle cx="12" cy="12" r="3.1" />
+      </g>
+    </symbol>
+    <symbol id="ic-logout" viewBox="0 0 15 15">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M3 1C2.44771 1 2 1.44772 2 2V13C2 13.5523 2.44772 14 3 14H10.5C10.7761 14 11 13.7761 11 13.5C11 13.2239 10.7761 13 10.5 13H3V2L10.5 2C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H3ZM12.6036 4.89645C12.4083 4.70118 12.0917 4.70118 11.8964 4.89645C11.7012 5.09171 11.7012 5.40829 11.8964 5.60355L13.2929 7H6.5C6.22386 7 6 7.22386 6 7.5C6 7.77614 6.22386 8 6.5 8H13.2929L11.8964 9.39645C11.7012 9.59171 11.7012 9.90829 11.8964 10.1036C12.0917 10.2988 12.4083 10.2988 12.6036 10.1036L14.8536 7.85355C15.0488 7.65829 15.0488 7.34171 14.8536 7.14645L12.6036 4.89645Z" fill="currentColor" />
+    </symbol>
   </svg>
 
   <!-- ===================== ВХОД ===================== -->
   <main id="view-login" class="view view--login">
     <section class="cover" aria-labelledby="cover-title">
 
-      <h1 id="cover-title" class="cover__title">Рейтинг<br />успеваемости</h1>
+      <h1 id="cover-title" class="cover__title">UniversityApp</h1>
 
       <form id="login-form" class="field" novalidate>
-        <label class="field__label" for="zach">Номер зачётной книжки</label>
         <div class="field__row">
           <span class="field__hash" aria-hidden="true">№</span>
           <input
@@ -268,27 +102,63 @@
     </section>
   </main>
 
-  <!-- ===================== РЕЙТИНГ ===================== -->
-  <div id="view-rating" class="view view--rating" hidden>
-    <header class="topbar">
-      <div class="topbar__brand">
-        <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
-        <span class="brand__name">Рейтинг <span class="brand__name-sub">успеваемости</span></span>
-      </div>
-      <div class="topbar__id">
-        <span class="topbar__id-label">Зачётная книжка</span>
-        <span class="topbar__id-num">№&nbsp;<span id="current-zach">—</span></span>
-      </div>
-      <button id="logout-btn" class="btn btn--ghost btn--icon" type="button" aria-label="Выйти">
-        <svg class="icon-logout" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 15" fill="none" aria-hidden="true">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M3 1C2.44771 1 2 1.44772 2 2V13C2 13.5523 2.44772 14 3 14H10.5C10.7761 14 11 13.7761 11 13.5C11 13.2239 10.7761 13 10.5 13H3V2L10.5 2C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H3ZM12.6036 4.89645C12.4083 4.70118 12.0917 4.70118 11.8964 4.89645C11.7012 5.09171 11.7012 5.40829 11.8964 5.60355L13.2929 7H6.5C6.22386 7 6 7.22386 6 7.5C6 7.77614 6.22386 8 6.5 8H13.2929L11.8964 9.39645C11.7012 9.59171 11.7012 9.90829 11.8964 10.1036C12.0917 10.2988 12.4083 10.2988 12.6036 10.1036L14.8536 7.85355C15.0488 7.65829 15.0488 7.34171 14.8536 7.14645L12.6036 4.89645Z" fill="currentColor" />
-        </svg>
-      </button>
-    </header>
+  <!-- ===================== ПРИЛОЖЕНИЕ ===================== -->
+  <div id="view-app" class="app" hidden>
 
-    <main id="rating-content" class="content" aria-live="polite"></main>
+    <!-- Навигация: сайдбар на десктопе, нижняя панель на мобилке -->
+    <nav class="nav" aria-label="Разделы">
+      <div class="nav__brand">
+        <svg class="brand__seal" viewBox="0 0 200 200" aria-hidden="true"><use href="#seal-mini" /></svg>
+        <span class="brand__name">UniversityApp</span>
+      </div>
+
+      <div class="nav__list">
+        <button class="nav__item is-active" type="button" data-tab="rating" aria-current="page">
+          <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-rating" /></svg>
+          <span class="nav__label">Рейтинг</span>
+        </button>
+        <button class="nav__item" type="button" data-tab="schedule">
+          <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-schedule" /></svg>
+          <span class="nav__label">Расписание</span>
+        </button>
+        <button class="nav__item" type="button" data-tab="settings">
+          <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-settings" /></svg>
+          <span class="nav__label">Настройки</span>
+        </button>
+      </div>
+
+      <!-- Выход: на десктопе внизу сайдбара, на мобилке — четвёртый пункт панели -->
+      <button class="nav__item nav__item--logout" type="button" id="logout-btn" aria-label="Выйти из зачётки">
+        <svg class="nav__icon" viewBox="0 0 15 15" aria-hidden="true"><use href="#ic-logout" /></svg>
+        <span class="nav__label">Выход</span>
+      </button>
+    </nav>
+
+    <!-- Основная область. Шапки раздела нет: активный раздел называет
+         сама навигация, а группу показывает экран расписания. -->
+    <div class="app__main">
+      <!-- Рейтинг -->
+      <section class="tab" id="tab-rating" data-panel="rating" aria-label="Рейтинг">
+        <main id="rating-content" class="content" aria-live="polite"></main>
+      </section>
+
+      <!-- Расписание -->
+      <section class="tab" id="tab-schedule" data-panel="schedule" aria-label="Расписание" hidden>
+        <div id="schedule-content" class="content"></div>
+      </section>
+
+      <!-- Настройки -->
+      <section class="tab" id="tab-settings" data-panel="settings" aria-label="Настройки" hidden>
+        <div id="settings-content" class="content"></div>
+      </section>
+    </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Версия обязательна: service worker отдаёт .js по cache-first, и без смены
+       URL свежий index.html склеивается со старым скриптом из кэша. -->
+  <!-- Точка входа; остальные модули подтягиваются её импортами.
+       Версия только здесь: import внутри модулей идёт по постоянным путям,
+       поэтому свежесть js обеспечивает service worker (см. sw.js). -->
+  <script type="module" src="js/main.js?v=36"></script>
 </body>
 </html>

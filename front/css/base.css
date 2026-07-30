@@ -1,0 +1,126 @@
+/* ============================================================
+   БАЗА
+   Сброс, типографика документа, общая колонка контента и анимации.
+   ============================================================ */
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button { font-family: inherit; }
+
+::selection { background: var(--stamp); color: var(--on-stamp); }
+
+:focus-visible {
+  outline: 2.5px solid var(--stamp);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------
+   Первая отрисовка до старта модулей.
+
+   js/main.js подключён как type="module" и потому выполняется уже после
+   разбора HTML — страница успевает нарисоваться. Инлайн-скрипт в <head>
+   заранее ставит data-boot по сохранённой сессии, и эти два правила сразу
+   показывают нужный экран: без них вошедший пользователь на каждой загрузке
+   видел бы вспышку экрана входа. main.js снимает атрибут, как только
+   расставит hidden сам.
+   --------------------------------------------------------------- */
+:root[data-boot="login"] #view-app { display: none; }
+:root[data-boot="app"] #view-login { display: none; }
+:root[data-boot="app"] #view-app[hidden] { display: block !important; }
+
+/* ---------------------------------------------------------------
+   Полосы прокрутки в блоках, которые скроллятся по горизонтали:
+   широкие таблицы рейтинга и лента дней в расписании.
+
+   На десктопе полоса нужна — мышью иначе не видно, что блок листается.
+   Системная выбивалась из оформления и рисовала непрозрачную дорожку поверх
+   скруглённых углов контейнера, из-за чего нижние углы таблицы выглядели
+   срезанными; прозрачная дорожка возвращает скругления.
+
+   На мобилке полосу скрываем: там листают свайпом, а подсказкой служат
+   градиенты-тени по краям блока (см. .rt-scroll в css/rating.css).
+
+   Порядок правил именно такой, потому что отменять display:none пришлось бы
+   вторым правилом — проще задать вид по умолчанию и убрать его на узких экранах.
+   --------------------------------------------------------------- */
+.table-scroll,
+.rt-scroll,
+.days {
+  scrollbar-width: thin;                              /* Firefox */
+  scrollbar-color: var(--line-2) transparent;
+}
+.table-scroll::-webkit-scrollbar,
+.rt-scroll::-webkit-scrollbar,
+.days::-webkit-scrollbar {
+  height: 8px;
+}
+.table-scroll::-webkit-scrollbar-track,
+.rt-scroll::-webkit-scrollbar-track,
+.days::-webkit-scrollbar-track {
+  background: transparent;
+}
+.table-scroll::-webkit-scrollbar-thumb,
+.rt-scroll::-webkit-scrollbar-thumb,
+.days::-webkit-scrollbar-thumb {
+  background: var(--line-2);
+  border-radius: 999px;
+  /* отступ от краёв, чтобы бегунок не упирался в скругления контейнера */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.table-scroll:hover::-webkit-scrollbar-thumb,
+.rt-scroll:hover::-webkit-scrollbar-thumb,
+.days:hover::-webkit-scrollbar-thumb {
+  background: var(--ink-soft);
+  background-clip: content-box;
+}
+
+/* Мобилка: полосу убираем, прокрутка свайпом остаётся.
+   Порог 768px тот же, что переключает всю оболочку приложения. */
+@media (max-width: 767px) {
+  .table-scroll,
+  .rt-scroll,
+  .days {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .table-scroll::-webkit-scrollbar,
+  .rt-scroll::-webkit-scrollbar,
+  .days::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Общая колонка контента — одна для всех экранов приложения */
+.content {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 40px) 96px;
+}
+
+/* ---------------------------------------------------------------
+   Анимации
+   --------------------------------------------------------------- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes stamp-in { 0% { opacity: 0; transform: rotate(-26deg) scale(1.4); } 100% { opacity: .92; transform: rotate(-9deg) scale(1); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
