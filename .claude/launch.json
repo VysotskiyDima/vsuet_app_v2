@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "-d", "front", "3000"],
+      "port": 3000
+    },
+    {
+      "name": "backend",
+      "url": "http://localhost:8000",
+      "port": 8000
+    }
+  ]
+}
