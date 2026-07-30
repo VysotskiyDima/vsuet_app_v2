@@ -1,9 +1,31 @@
-const CACHE_NAME = "vsuet-rating-v42";
+const CACHE_NAME = "vsuet-rating-v43";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
-  "./app.js?v=29",
-  "./styles.css?v=32",
+  "./css/tokens.css?v=33",
+  "./css/base.css?v=33",
+  "./css/controls.css?v=33",
+  "./css/login.css?v=33",
+  "./css/app-shell.css?v=33",
+  "./css/rating.css?v=33",
+  "./css/kt-popup.css?v=33",
+  "./css/schedule.css?v=33",
+  "./css/settings.css?v=33",
+  "./js/main.js?v=33",
+  "./js/config.js",
+  "./js/utils.js",
+  "./js/api.js",
+  "./js/store.js",
+  "./js/theme.js",
+  "./js/login.js",
+  "./js/nav.js",
+  "./js/session.js",
+  "./js/view-rating.js",
+  "./js/view-schedule.js",
+  "./js/view-settings.js",
+  "./js/kt-popup.js",
+  "./js/sw-register.js",
+  "./js/data/mock-schedule.js",
   "./resources/logo.svg",
   "./resources/logo-192.png",
   "./resources/logo-512.png"
@@ -12,7 +34,13 @@ const STATIC_ASSETS = [
 // Расширения, которые считаем "статикой" для Cache-First,
 // даже если их не было в STATIC_ASSETS на момент install
 // (например, шрифты, подгружаемые динамически через CSS).
-const STATIC_EXTENSIONS = /\.(?:js|css|woff2?|ttf|svg|png|jpg|jpeg|gif|ico)(?:\?.*)?$/;
+//
+// .js сюда НЕ входит намеренно. Cache-First различает файлы по URL, а у ES-модулей
+// путь в import постоянный — версию к нему не приписать, как к styles.css?v=N.
+// При Cache-First это давало разъезд: свежий index.html склеивался со старыми
+// модулями из кэша. Поэтому скрипты идут по Network-First: сеть есть — берём
+// свежие, сети нет — отдаём из кэша, куда они попали при install.
+const STATIC_EXTENSIONS = /\.(?:css|woff2?|ttf|svg|png|jpg|jpeg|gif|ico)(?:\?.*)?$/;
 
 self.addEventListener("install", (e) => {
   e.waitUntil(

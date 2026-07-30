@@ -1,0 +1,316 @@
+/* ============================================================
+   ЭКРАН РЕЙТИНГА
+   Секции по видам ведомостей, таблица КТ с залипающей
+   колонкой, оценочная таблица и состояния загрузки/ошибки.
+   ============================================================ */
+.section { margin-top: 56px; animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
+.section:first-child { margin-top: 8px; }
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  gap: .9rem;
+  padding-bottom: .8rem;
+  margin-bottom: 1.1rem;
+  border-bottom: 2px solid var(--ink);
+}
+.section__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.35rem, 3.4vw, 1.85rem);
+  letter-spacing: -.015em;
+}
+.section__count { font-size: .9rem; color: var(--ink-soft); font-weight: 500; }
+.section__tag {
+  margin-left: auto;
+  align-self: center;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  font-weight: 600;
+  color: var(--stamp);
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  padding: .2rem .7rem;
+}
+.section__tag--grade { color: var(--ink-soft); }
+
+/* обёртка для горизонтального скролла широких таблиц */
+.table-scroll,
+.rt-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper-2);
+  box-shadow: var(--shadow);
+  -webkit-overflow-scrolling: touch;
+}
+
+table { border-collapse: separate; border-spacing: 0; width: 100%; }
+
+/* ---------- Рейтинговая таблица (КТ) ---------- */
+.rt { font-variant-numeric: tabular-nums; min-width: 640px; }
+.rt th, .rt td {
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: .7rem .55rem;
+  text-align: center;
+}
+.rt th:first-child, .rt td:first-child { border-left: none; }
+.rt tr > :last-child { border-right: none; }
+
+.rt thead th {
+  background: var(--paper-3);
+  font-weight: 600;
+  font-size: .76rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.rt thead .kt-group {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: .82rem;
+  color: var(--ink);
+  letter-spacing: .04em;
+  background: color-mix(in srgb, var(--stamp) 7%, var(--paper-3));
+  border-bottom: 1px solid var(--line-2);
+}
+.kt-group__w {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: .62rem;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: var(--stamp-ink);
+}
+.rt thead .kt-result,
+.rt thead .rt-final {
+  vertical-align: middle;
+  color: var(--ink);
+}
+.rt thead .rt-final { background: color-mix(in srgb, var(--stamp) 12%, var(--paper-3)); color: var(--stamp-ink); }
+
+.rt .rt-subject {
+  text-align: left;
+  font-weight: 500;
+  background: var(--paper-2);
+  min-width: 150px;
+  /* при горизонтальном скролле широких КТ-таблиц держим название предмета на виду */
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--line-2);
+}
+.rt thead .rt-subject { z-index: 3; }
+.rt tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--paper-3) 60%, transparent); }
+.rt tbody tr:nth-child(even) .rt-subject { background: color-mix(in srgb, var(--paper-3) 60%, var(--paper-2)); }
+.rt tbody tr:hover td { background: color-mix(in srgb, var(--stamp) 5%, var(--paper-3)); }
+
+.rt-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.rt-cell__v { font-family: var(--font-mono); font-weight: 500; font-size: .98rem; }
+.rt-cell__w { font-size: .62rem; color: var(--ink-soft); margin-top: 2px; letter-spacing: .02em; }
+.rt-cell.is-empty .rt-cell__v { color: var(--line-2); }
+
+.rt-total { font-family: var(--font-mono); font-weight: 700; background: color-mix(in srgb, var(--stamp) 4%, transparent); }
+.rt-rating {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--stamp-ink);
+  background: color-mix(in srgb, var(--stamp) 9%, transparent) !important;
+}
+
+.rt-caption {
+  margin: .7rem 2px 0;
+  font-size: .78rem;
+  color: var(--ink-soft);
+}
+
+/* ---------- Оценочная таблица ---------- */
+.gt { min-width: 380px; }
+.gt th, .gt td { padding: .85rem 1.1rem; border-bottom: 1px solid var(--line); text-align: left; }
+.gt thead th {
+  background: var(--paper-3);
+  font-weight: 600;
+  font-size: .76rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.gt thead th:last-child, .gt td:last-child { text-align: right; width: 1%; white-space: nowrap; }
+.gt tbody tr:last-child td { border-bottom: none; }
+.gt tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--paper-3) 55%, transparent); }
+.gt tbody tr:hover td { background: color-mix(in srgb, var(--stamp) 5%, var(--paper-3)); }
+.gt-subject { font-weight: 500; }
+
+.chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: .82rem;
+  letter-spacing: .02em;
+  padding: .32rem .8rem;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+}
+.chip.is-good { color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); }
+.chip.is-ok   { color: var(--ok);   background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.chip.is-mid  { color: var(--mid);  background: color-mix(in srgb, var(--mid) 12%, transparent); }
+.chip.is-bad  { color: var(--bad);  background: color-mix(in srgb, var(--bad) 10%, transparent); }
+.chip.is-none { color: var(--line-2); background: transparent; }
+
+/* ---------------------------------------------------------------
+   Состояния: загрузка, пусто, ошибка, баннер
+   --------------------------------------------------------------- */
+.state {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: clamp(56px, 16vh, 140px) 16px;
+  gap: 1rem;
+}
+.state__seal { width: 64px; height: 64px; color: var(--stamp); }
+.loading .state__seal { animation: spin 1.4s linear infinite; }
+.state__title { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; margin: 0; }
+.state__text { margin: 0; color: var(--ink-soft); max-width: 42ch; }
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding: .85rem 1.1rem;
+  background: color-mix(in srgb, var(--mid) 9%, var(--paper-2));
+  border: 1px solid color-mix(in srgb, var(--mid) 40%, var(--line));
+  border-radius: var(--r-md);
+  font-size: .9rem;
+}
+.banner__retry { margin-left: auto; }
+
+/* --- мобильный экран --- */
+@media (max-width: 560px) {
+  /* Оптимизация таблиц для мобильных устройств */
+  .rt {
+    table-layout: fixed;
+    min-width: 460px;
+    width: 100%;
+  }
+  .rt .rt-subject {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    padding: .5rem .35rem;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .rt .kt-result {
+    width: 58px;
+  }
+  .rt .rt-final {
+    width: 70px;
+  }
+  .rt th, .rt td {
+    padding: .5rem .3rem;
+    font-size: 0.78rem;
+  }
+  .rt-rating {
+    font-size: 1rem;
+  }
+  .rt-caption {
+    font-size: 0.72rem;
+    margin: .5rem 4px 0;
+  }
+
+  .gt {
+    min-width: 100%;
+  }
+  .gt th, .gt td {
+    padding: .6rem .5rem;
+    font-size: 0.82rem;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Залипающая колонка «Дисциплина».
+   ВНИМАНИЕ: блок намеренно идёт последним — часть свойств (min/max-width,
+   font-size, тень) перекрывает правила .rt .rt-subject выше и в мобильном
+   медиазапросе. Раньше он жил инлайном в <head> и работал за счёт того же
+   порядка. Сводить дубли в одно правило нужно отдельной правкой, с проверкой
+   таблицы на живых данных.
+   ------------------------------------------------------------------ */
+/* ── Sticky-таблица рейтинга ──────────────────────────── */
+
+/*
+  Обёртка с горизонтальным скроллом.
+  overflow-x: auto — скроллится только таблица, не вся страница.
+*/
+.rt-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* тень-подсказка справа когда есть что скроллить */
+  background:
+    linear-gradient(to right, var(--paper-2) 0%, transparent 100%) 0 0 / 20px 100% no-repeat local,
+    linear-gradient(to left,  var(--paper-2) 0%, transparent 100%) 100% 0 / 20px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 10%, transparent) 0%, transparent 100%) 0 0 / 12px 100% no-repeat scroll,
+    linear-gradient(to left,  color-mix(in srgb, var(--ink) 10%, transparent) 0%, transparent 100%) 100% 0 / 12px 100% no-repeat scroll;
+}
+
+.rt {
+  /* важно: border-collapse ломает sticky, нужен separate */
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Колонка «Дисциплина» — прилипает слева */
+.rt .rt-subject {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--paper-2);
+  /* правая граница вместо border-collapse */
+  box-shadow: 2px 0 4px -1px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+/* Заголовок «Дисциплина» — выше остальных sticky */
+.rt thead .rt-subject {
+  z-index: 3;
+}
+
+/* На мобилке сужаем колонку названия */
+.rt .rt-subject {
+  min-width: 130px;
+  max-width: 160px;
+  white-space: normal;
+  word-break: break-word;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+@media (min-width: 640px) {
+  .rt .rt-subject {
+    min-width: 180px;
+    max-width: 240px;
+    font-size: inherit;
+  }
+}
+
+/* Остальные ячейки таблицы — убираем лишние отступы на мобилке */
+@media (max-width: 639px) {
+  .rt thead th,
+  .rt tbody td {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+  .rt-caption { font-size: 0.78rem; }
+}
+
+
+
+/* ── Инпут — не зумить на iOS (font-size >= 16px) ──────── */
+#zach { font-size: 1rem !important; }

@@ -1,0 +1,63 @@
+/* ============================================================
+   БАЗА
+   Сброс, типографика документа, общая колонка контента и анимации.
+   ============================================================ */
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button { font-family: inherit; }
+
+::selection { background: var(--stamp); color: var(--on-stamp); }
+
+:focus-visible {
+  outline: 2.5px solid var(--stamp);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------
+   Первая отрисовка до старта модулей.
+
+   js/main.js подключён как type="module" и потому выполняется уже после
+   разбора HTML — страница успевает нарисоваться. Инлайн-скрипт в <head>
+   заранее ставит data-boot по сохранённой сессии, и эти два правила сразу
+   показывают нужный экран: без них вошедший пользователь на каждой загрузке
+   видел бы вспышку экрана входа. main.js снимает атрибут, как только
+   расставит hidden сам.
+   --------------------------------------------------------------- */
+:root[data-boot="login"] #view-app { display: none; }
+:root[data-boot="app"] #view-login { display: none; }
+:root[data-boot="app"] #view-app[hidden] { display: block !important; }
+
+/* Общая колонка контента — одна для всех экранов приложения */
+.content {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 40px) 96px;
+}
+
+/* ---------------------------------------------------------------
+   Анимации
+   --------------------------------------------------------------- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes stamp-in { 0% { opacity: 0; transform: rotate(-26deg) scale(1.4); } 100% { opacity: .92; transform: rotate(-9deg) scale(1); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
