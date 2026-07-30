@@ -214,12 +214,13 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
   .rt .kt-result {
     width: 58px;
   }
+  /* Ширина под заголовок «РЕЙТИНГ»: при 0.82rem/600 текст занимает 65px, плюс
+     паддинги 10+10 (задаются ниже, в блоке 639px) — итого нужно 85px.
+     На 70px буква «г» вылезала за ячейку и рисовалась поверх правой границы
+     таблицы: это и была «фантомная линия». Сама ячейка не растянется —
+     у таблицы table-layout: fixed. */
   .rt .rt-final {
-    width: 70px;
-  }
-  .rt th, .rt td {
-    padding: .5rem .3rem;
-    font-size: 0.78rem;
+    width: 88px;
   }
   .rt-rating {
     font-size: 1rem;
@@ -300,14 +301,16 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
   }
 }
 
-/* Остальные ячейки таблицы — убираем лишние отступы на мобилке */
+/* Компактные ячейки на узких экранах. Единственное место, где задаются
+   паддинги и кегль таблицы для мобилки: селектор .rt thead th специфичнее,
+   чем .rt th, поэтому дублировать их в блоке 560px бессмысленно — там
+   останутся только ширины колонок. */
 @media (max-width: 639px) {
   .rt thead th,
   .rt tbody td {
     padding: 8px 10px;
     font-size: 0.82rem;
   }
-  .rt-caption { font-size: 0.78rem; }
 }
 
 
