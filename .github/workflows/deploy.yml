@@ -2,18 +2,17 @@ name: Build and Deploy
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: backend
+  BACKEND_IMAGE: w1sentexe/backend
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,27 +28,20 @@ jobs:
   build_and_push:
     needs: lint
     if: github.event_name == 'push'
-
     runs-on: ubuntu-latest
-
     permissions:
-      contents: write
+      contents: read
       packages: write
-
     outputs:
       backend_changed: ${{ steps.filter.outputs.backend }}
       nginx_changed: ${{ steps.filter.outputs.nginx }}
-      version: ${{ steps.version.outputs.version }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Detect changed paths
-        id: filter
         uses: dorny/paths-filter@v3
+        id: filter
         with:
           filters: |
             backend:
@@ -60,34 +52,22 @@ jobs:
             nginx:
               - 'nginx/**'
 
-      - name: Calculate next version
-        if: steps.filter.outputs.backend == 'true'
-        id: version
-        run: |
-          git fetch --tags
-
-          LAST_TAG=$(git tag -l "v1.0.*" --sort=-v:refname | head -n1)
-
-          if [ -z "$LAST_TAG" ]; then
-            VERSION="1.0.0"
-          else
-            PATCH=${LAST_TAG##*.}
-            VERSION="1.0.$((PATCH + 1))"
-          fi
-
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
       - name: Log in to GHCR
         if: steps.filter.outputs.backend == 'true'
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         if: steps.filter.outputs.backend == 'true'
         uses: docker/setup-buildx-action@v3
+
+      - name: Compute version tag
+        if: steps.filter.outputs.backend == 'true'
+        id: version
+        run: echo "value=1.0.$(( ${{ github.run_number }} - 1 ))" >> "$GITHUB_OUTPUT"
 
       - name: Build and push backend image
         if: steps.filter.outputs.backend == 'true'
@@ -97,30 +77,18 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.value }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
-
-      - name: Create git tag
-        if: steps.filter.outputs.backend == 'true'
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          git tag "v${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
 
   deploy:
     needs: build_and_push
     if: github.event_name == 'push'
-
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: read
-
     steps:
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -131,34 +99,32 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-
             cd ${{ secrets.VPS_PROJECT_PATH }}
 
+            # Синхронизируем код (nginx.conf, front/, docker-compose.prod.yml).
+            # Выполняется всегда — front-статика на диске должна быть свежей
+            # независимо от того, что именно менялось.
             git fetch origin main
             git reset --hard origin/main
 
             if [ "${{ needs.build_and_push.outputs.backend_changed }}" = "true" ]; then
-              echo "==> Backend changed"
-
-              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
-                -u "${{ github.actor }}" \
-                --password-stdin
-
-              export IMAGE_TAG=${{ needs.build_and_push.outputs.version }}
-
+              echo "==> Backend changed, pulling new image and restarting app"
+              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
               docker compose -f docker-compose.prod.yml pull app
               docker compose -f docker-compose.prod.yml up -d --no-deps app
             else
-              echo "==> Backend unchanged"
+              echo "==> Backend unchanged, skipping app restart"
             fi
 
             if [ "${{ needs.build_and_push.outputs.nginx_changed }}" = "true" ]; then
-              echo "==> Reload nginx"
-
-              docker exec vsuet_rating_v2-nginx nginx -t
-              docker exec vsuet_rating_v2-nginx nginx -s reload
+              echo "==> nginx config changed, recreating container"
+              docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps nginx
             else
-              echo "==> nginx unchanged"
+              echo "==> nginx config unchanged, skipping restart"
             fi
 
+            # front/ обновляется просто через git reset выше — не требует
+            # ни пересборки, ни reload (volume читается заново на каждый запрос)
+
             docker image prune -f
+
