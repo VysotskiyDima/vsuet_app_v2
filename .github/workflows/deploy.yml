@@ -39,6 +39,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Смотрит diff последнего пуша и решает, что реально изменилось.
+      # Все шаги ниже условно пропускаются, если backend не затронут —
+      # именно здесь и решается "пересобирать или нет".
       - name: Detect changed paths
         uses: dorny/paths-filter@v3
         id: filter
@@ -64,6 +67,7 @@ jobs:
         if: steps.filter.outputs.backend == 'true'
         uses: docker/setup-buildx-action@v3
 
+      # 1.0.x, где x = run_number - 1 (первый успешный билд получает 1.0.0)
       - name: Compute version tag
         if: steps.filter.outputs.backend == 'true'
         id: version
@@ -127,4 +131,3 @@ jobs:
             # ни пересборки, ни reload (volume читается заново на каждый запрос)
 
             docker image prune -f
-
