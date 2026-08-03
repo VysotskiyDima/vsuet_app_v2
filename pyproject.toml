@@ -13,6 +13,7 @@ dependencies = [
     "apscheduler>=3.10.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
+    "prometheus-fastapi-instrumentator>=8.1.0",
 ]
 
 [build-system]
