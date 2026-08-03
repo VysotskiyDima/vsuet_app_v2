@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.datastructures import Headers, MutableHeaders
 
 from app.config import settings
@@ -15,8 +16,6 @@ from app.routers import rating_router, students_router
 from app.scheduler.jobs import run_parsing_cycle
 from app.services.rating_service import RatingService
 from app.services.student_service import StudentService
-
-from prometheus_fastapi_instrumentator import Instrumentator
 
 print_banner()
 setup_logging()
