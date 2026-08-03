@@ -16,6 +16,8 @@ from app.scheduler.jobs import run_parsing_cycle
 from app.services.rating_service import RatingService
 from app.services.student_service import StudentService
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 print_banner()
 setup_logging()
 log = get_logger(__name__)
@@ -148,3 +150,4 @@ app.add_middleware(
 app.add_middleware(TracingMiddleware)
 app.include_router(students_router.router)
 app.include_router(rating_router.router)
+Instrumentator().instrument(app).expose(app)
