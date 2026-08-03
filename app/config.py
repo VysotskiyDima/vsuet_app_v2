@@ -13,17 +13,27 @@ class ParsingSettings(BaseSettings):
     semester: str
 
 
-class RedisSettings(BaseSettings):
-    """Redis: две логические БД под данные (активная/фоновая меняются ролями)
-    и отдельная служебная БД под указатель активной БД."""
+class DatabaseSettings(BaseSettings):
+    """SQLite: путь до файла БД и параметры соединения.
 
-    model_config = {**_ENV, "env_prefix": "REDIS_"}
+    Путь — переменная окружения: в контейнере это примонтированный том,
+    при локальной отладке — файл рядом с проектом.
+    """
 
-    host: str = "redis"
-    port: int = 6379
-    db_0: int = 0
-    db_1: int = 1
-    meta_db: int = 2
+    model_config = {**_ENV, "env_prefix": "DB_"}
+
+    path: str = "data/rating.sqlite3"
+    # Сколько читатель ждёт освобождения блокировки, прежде чем упасть с
+    # SQLITE_BUSY. Цикл парсинга держит запись долго, но в режиме WAL читателей
+    # он не блокирует — таймаут нужен лишь на короткие моменты чекпоинта.
+    busy_timeout_ms: int = 5000
+    # Размер батча при заливке снапшота: компромисс между числом executemany
+    # и объёмом удерживаемых в памяти строк.
+    write_batch_size: int = 2000
+    # Пул подключений: читатели запросов плюс одно длительное подключение
+    # писателя, удерживаемое на весь цикл парсинга.
+    pool_size: int = 5
+    max_overflow: int = 5
 
 
 class SchedulerSettings(BaseSettings):
@@ -101,7 +111,6 @@ class LoggingSettings(BaseSettings):
 
     reset: str = "\033[0m"
     time_color: str = "\033[94m"
-    ctx_color: str = "\033[36m"
     level_colors: dict[str, str] = Field(
         default_factory=lambda: {
             "DEBUG": "\033[90m",
@@ -111,7 +120,7 @@ class LoggingSettings(BaseSettings):
             "CRITICAL": "\033[1;31m",
         }
     )
-    banner_colors: tuple[tuple[int, int, int], ...] = ((79, 70, 229), (147, 51, 234), (236, 72, 153))
+    banner_colors: tuple[tuple[int, int, int], ...] = ((234, 88, 12), (249, 115, 22), (251, 191, 36))
 
     @field_validator("level", mode="before")
     @classmethod
@@ -124,7 +133,7 @@ class LoggingSettings(BaseSettings):
 
 class Settings(BaseModel):
     parsing: ParsingSettings = Field(default_factory=ParsingSettings)
-    redis: RedisSettings = Field(default_factory=RedisSettings)
+    db: DatabaseSettings = Field(default_factory=DatabaseSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     site: RatingSiteSettings = Field(default_factory=RatingSiteSettings)
     scraper: ScraperSettings = Field(default_factory=ScraperSettings)

@@ -1,13 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: vsuet_rating_v2-redis
-    command: ["redis-server", "--save", "60", "1", "--dbfilename", "dump.rdb", "--dir", "/data"]
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-dev-data:/data
-
   app:
     build: .
     container_name: vsuet_rating_v2-fastapi
@@ -15,8 +6,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    depends_on:
-      - redis
+    volumes:
+      # Файл SQLite держим в томе: пересборка образа не должна стирать снапшот.
+      # Путь внутри контейнера задаётся переменной DB_PATH (см. .env.example).
+      - sqlite-dev-data:/data
 
   nginx:
     image: nginx:alpine
@@ -30,4 +23,4 @@ services:
       - app
 
 volumes:
-  redis-dev-data:
+  sqlite-dev-data:

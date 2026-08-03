@@ -8,8 +8,17 @@
    ============================================================ */
 .sched { max-width: 720px; margin: 0 auto; }
 
-/* Шапка расписания — переключатель недели */
-.sched__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+/* Шапка расписания: неделя слева, выбор подгруппы справа.
+   wrap — на узких экранах два переключателя в строку не влезают. */
+.sched__head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+
+/* Выбор подгруппы с подписью */
+.sched__pick { display: flex; align-items: center; gap: .5rem; }
+.sched__pick-label {
+  font-size: .78rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
 
 /* Дни недели */
 .days { display: flex; gap: 6px; margin: 16px 0 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }

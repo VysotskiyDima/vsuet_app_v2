@@ -15,6 +15,8 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.config import settings
+from app.entities.not_rating_ved_model import NotRatingVedModel
+from app.entities.rating_ved_model import RatingVedModel
 from app.logging_config import get_logger
 from app.parser.html_parser import parse_ved_html
 
@@ -235,8 +237,10 @@ class ParserService:
         log.debug("Link collection completed", groups=len(result), vedomosts=total_urls)
         return result
 
-    async def parse_ved(self, url: str) -> list[dict] | None:
+    async def parse_ved(self, url: str) -> list[RatingVedModel] | list[NotRatingVedModel] | None:
         """Скачивает и парсит одну ведомость в записи целевого формата.
+
+        Возвращает готовые доменные модели, а не словари.
 
         Различаем два исхода с пустым результатом:
           * None  — ведомость **потеряна** (сетевая ошибка или 429 после всех

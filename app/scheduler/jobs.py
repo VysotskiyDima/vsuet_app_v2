@@ -2,8 +2,10 @@ import asyncio
 from datetime import datetime, timedelta
 
 from app.config import settings
+from app.db.session import session_scope
 from app.logging_config import get_logger
-from app.repository.redis_repository import RedisRepository
+from app.repository.rating_repository import RatingRepository
+from app.repository.snapshot_repository import SnapshotRepository
 from app.services.parser_service import ParserService
 from app.services.parsing_pipeline import ParsingPipeline, PipelineError
 
@@ -23,15 +25,18 @@ async def run_parsing_cycle() -> None:
 
     async with _running:
         log.info("Start parsing cycle")
-        repo = RedisRepository()
-        try:
-            async with ParserService() as parser:
-                report = await ParsingPipeline(parser, repo).run()
-        except PipelineError as exc:
-            log.exception("Parsing cycle failed, switch db not performed", stage=exc.stage)
-            return
-        finally:
-            await repo.close()
+        # Отдельная сессия на весь цикл: её транзакция держит новый снапшот до
+        # коммита, а запросы обслуживаются своими сессиями и видят прежний.
+        async with session_scope() as session:
+            snapshot = SnapshotRepository(session)
+            reader = RatingRepository(session)
+            try:
+                async with ParserService() as parser:
+                    report = await ParsingPipeline(parser, snapshot, reader).run()
+            except PipelineError as exc:
+                # Пайплайн уже откатил транзакцию — в БД остался прежний снапшот.
+                log.exception("Parsing cycle failed, snapshot not committed", stage=exc.stage)
+                return
 
         if not report.site_available:
             next_run = (datetime.now() + timedelta(minutes=settings.scheduler.interval_minutes)).strftime(

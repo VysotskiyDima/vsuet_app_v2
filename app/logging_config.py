@@ -1,4 +1,3 @@
-import contextvars
 import logging
 import os
 import sys
@@ -10,7 +9,6 @@ from app.config import settings
 # Контекст для трассировочных идентификаторов (например, REQUEST-UUID).
 # default=None (а не {}): общий изменяемый дефолт — footgun, а пустой dict и None
 # одинаково falsy для `if ctx:` ниже.
-trace_ctx: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("trace_ctx", default=None)
 
 # Оформление (цвета ANSI) сгруппировано в config.LoggingSettings.
 _STYLE = settings.logging
@@ -63,15 +61,8 @@ class CustomFormatter(logging.Formatter):
         exec_line = os.path.relpath(pathname, cwd) if pathname.startswith(cwd) else pathname.lstrip(os.sep)
         exec_str = f"{exec_line}:{record.lineno}"
 
-        # Добавляем данные трассировки, если они установлены в контексте
-        ctx = trace_ctx.get()
-        ctx_str = ""
-        if ctx:
-            ctx_content = "".join(f"[{k}={v}]" for k, v in ctx.items())
-            ctx_str = f"{_STYLE.ctx_color}{ctx_content}{_STYLE.reset}"
-
         message = record.getMessage()
-        log_line = f"[{asctime_ms_str}][{levelname_str}]{ctx_str}[{exec_str}] {message}"
+        log_line = f"[{asctime_ms_str}][{levelname_str}][{exec_str}] {message}"
 
         # Обработка исключений и трассировки стека
         if record.exc_info and not record.exc_text:
@@ -90,8 +81,8 @@ class CustomFormatter(logging.Formatter):
 
 
 def print_banner() -> None:
-    """Печатает app/resources/rating_v2.txt с диагональным градиентом (см. banner_colors)."""
-    banner_path = os.path.join(os.path.dirname(__file__), "resources", "rating_v2.txt")
+    """Печатает app/resources/university_app.txt с диагональным градиентом (см. banner_colors)."""
+    banner_path = os.path.join(os.path.dirname(__file__), "resources", "university_app.txt")
     if not os.path.exists(banner_path):
         return
     try:
@@ -155,11 +146,10 @@ def setup_logging() -> None:
     for noisy in ("httpx", "httpcore", "asyncio", "apscheduler.executors"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
-    # Перенаправляем системные логи uvicorn в наш кастомный формат и убираем дубли
-    for name in ("uvicorn", "uvicorn.error"):
+    # Перенаправляем системные логи uvicorn в наш кастомный формат и убираем дубли.
+    # uvicorn.access тоже здесь: своего логирования запросов у приложения нет,
+    # access-лог uvicorn — единственный источник строк вида «GET /path 200».
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logger_uni = logging.getLogger(name)
         logger_uni.handlers.clear()
         logger_uni.propagate = True
-
-    # Приглушаем логи доступа uvicorn, так как мы пишем логи запросов в роутерах
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

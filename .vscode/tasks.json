@@ -2,71 +2,32 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "start-redis-debug",
+      "label": "free-port-8000",
+      "detail": "Освобождает порт бэкенда: снимает всё, что слушает 8000",
       "type": "shell",
-      "command": "docker start vsuet_rating_v2-redis-DEBUG 2>/dev/null || docker run -d --name vsuet_rating_v2-redis-DEBUG -p 6379:6379 -v vsuet_rating_v2-redis-DEBUG-data:/data redis:7-alpine redis-server --save 60 1 --dbfilename dump.rdb --dir /data",
+      "command": "PORT=8000; PIDS=$(lsof -ti tcp:$PORT 2>/dev/null || fuser $PORT/tcp 2>/dev/null); if [ -n \"$PIDS\" ]; then kill $PIDS 2>/dev/null; sleep 1; PIDS=$(lsof -ti tcp:$PORT 2>/dev/null); [ -n \"$PIDS\" ] && kill -9 $PIDS 2>/dev/null; fi; exit 0",
       "windows": {
-        "command": "docker start vsuet_rating_v2-redis-DEBUG 2>$null; if ($LASTEXITCODE -ne 0) { docker run -d --name vsuet_rating_v2-redis-DEBUG -p 6379:6379 -v vsuet_rating_v2-redis-DEBUG-data:/data redis:7-alpine redis-server --save 60 1 --dbfilename dump.rdb --dir /data }",
+        "command": "Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; exit 0",
         "options": { "shell": { "executable": "powershell.exe" } }
       },
       "problemMatcher": [],
-      "presentation": {
-        "reveal": "silent",
-        "panel": "shared"
-      }
+      "presentation": { "reveal": "silent", "panel": "shared", "close": true }
     },
     {
-      "label": "clear-redis-debug",
+      "label": "free-port-3000",
+      "detail": "Освобождает порт раздачи фронта: снимает всё, что слушает 3000",
       "type": "shell",
-      "command": "docker exec vsuet_rating_v2-redis-DEBUG sh -c \"until redis-cli ping | grep -q PONG; do sleep 0.1; done && redis-cli flushall\"",
+      "command": "PORT=3000; PIDS=$(lsof -ti tcp:$PORT 2>/dev/null || fuser $PORT/tcp 2>/dev/null); if [ -n \"$PIDS\" ]; then kill $PIDS 2>/dev/null; sleep 1; PIDS=$(lsof -ti tcp:$PORT 2>/dev/null); [ -n \"$PIDS\" ] && kill -9 $PIDS 2>/dev/null; fi; exit 0",
       "windows": {
+        "command": "Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; exit 0",
         "options": { "shell": { "executable": "powershell.exe" } }
       },
       "problemMatcher": [],
-      "presentation": {
-        "reveal": "silent",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "start-redis-debug-clear",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "start-redis-debug",
-        "clear-redis-debug"
-      ],
-      "problemMatcher": []
-    },
-    {
-      "label": "stop-redis-debug",
-      "type": "shell",
-      "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>/dev/null || true",
-      "windows": {
-        "command": "docker stop vsuet_rating_v2-redis-DEBUG 2>$null; exit 0",
-        "options": { "shell": { "executable": "powershell.exe" } }
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "stop-frontend",
-      "type": "shell",
-      "command": "pkill -f \"[h]ttp.server -d front 3000\" 2>/dev/null || true",
-      "windows": {
-        "command": "Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }",
-        "options": { "shell": { "executable": "powershell.exe" } }
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "stop-all-debug-services",
-      "dependsOn": [
-        "stop-redis-debug",
-        "stop-frontend"
-      ],
-      "problemMatcher": []
+      "presentation": { "reveal": "silent", "panel": "shared", "close": true }
     },
     {
       "label": "start-frontend",
+      "detail": "Раздаёт front/ на :3000",
       "type": "shell",
       "command": "${workspaceFolder}/.venv/bin/python -m http.server -d front 3000",
       "windows": {
@@ -75,9 +36,7 @@
       "isBackground": true,
       "problemMatcher": {
         "owner": "custom",
-        "pattern": {
-          "regexp": "^$"
-        },
+        "pattern": { "regexp": "^$" },
         "background": {
           "activeOnStart": true,
           "beginsPattern": "Serving HTTP on",
@@ -86,22 +45,51 @@
       }
     },
     {
-      "label": "wait-for-redis",
+      "label": "clear-db-debug",
+      "detail": "Удаляет файл снапшота SQLite — следующий запуск начнёт парсинг с нуля",
       "type": "shell",
-      "command": "docker exec vsuet_rating_v2-redis-DEBUG sh -c \"until redis-cli ping | grep -q PONG; do sleep 0.1; done\"",
+      "command": "rm -f ${workspaceFolder}/data/rating.sqlite3*",
       "windows": {
+        "command": "Remove-Item -Path '${workspaceFolder}\\data\\rating.sqlite3*' -Force -ErrorAction SilentlyContinue",
         "options": { "shell": { "executable": "powershell.exe" } }
       },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared", "close": true }
+    },
+
+    {
+      "label": "prepare-backend",
+      "detail": "Освобождает 8000 перед стартом — на случай, если прошлый запуск не завершился",
+      "dependsOrder": "sequence",
+      "dependsOn": ["free-port-8000"],
       "problemMatcher": []
     },
     {
-      "label": "start-all-debug-services",
+      "label": "prepare-backend-clear",
+      "detail": "То же плюс удаление файла БД",
       "dependsOrder": "sequence",
-      "dependsOn": [
-        "start-redis-debug",
-        "wait-for-redis",
-        "start-frontend"
-      ],
+      "dependsOn": ["free-port-8000", "clear-db-debug"],
+      "problemMatcher": []
+    },
+    {
+      "label": "prepare-fullstack",
+      "detail": "Порядок важен: сначала освобождаем оба порта, только потом поднимаем фронт",
+      "dependsOrder": "sequence",
+      "dependsOn": ["free-port-8000", "free-port-3000", "start-frontend"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cleanup-backend",
+      "detail": "После отладки: добиваем бэкенд, если он пережил остановку сессии",
+      "dependsOrder": "sequence",
+      "dependsOn": ["free-port-8000"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cleanup-fullstack",
+      "detail": "После отладки: гасим и бэкенд, и раздачу фронта",
+      "dependsOrder": "sequence",
+      "dependsOn": ["free-port-8000", "free-port-3000"],
       "problemMatcher": []
     }
   ]

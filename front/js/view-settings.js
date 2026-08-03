@@ -6,9 +6,18 @@
  */
 
 import { $, escapeHtml } from "./utils.js";
-import { getZach } from "./store.js";
+import { getGroup, getZach } from "./store.js";
 import { applyTheme, currentTheme } from "./theme.js";
-import { MOCK_GROUP } from "./data/mock-schedule.js";
+
+/**
+ * Группу подгружает session.js при входе.
+ * undefined — ответ ещё не пришёл, null — бек ответил, что связки нет.
+ */
+function groupLabel() {
+  const group = getGroup();
+  if (group === undefined) return "…";
+  return group || "—";
+}
 
 export function renderSettings() {
   const el = $("#settings-content");
@@ -25,7 +34,7 @@ export function renderSettings() {
           </div>
           <div class="set-row">
             <span class="set-row__k">Группа</span>
-            <span class="set-row__v set-row__v--code">${escapeHtml(MOCK_GROUP)}</span>
+            <span class="set-row__v set-row__v--code">${escapeHtml(groupLabel())}</span>
           </div>
         </div>
       </div>

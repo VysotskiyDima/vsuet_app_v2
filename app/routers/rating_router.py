@@ -7,12 +7,15 @@ from app.services.rating_service import RatingService, get_rating_service
 
 router = APIRouter(prefix="/rating", tags=["rating"])
 
+# Зачёт и экзамен возвращают записи обеих форм: ведомость без колонок КТ парсер
+# относит к оценочному формату независимо от вида (см. app/parser/html_parser.py).
+
 
 @router.get("/{zach_number}/zachet")
 async def zachet(
     zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
-) -> list[RatingVedModel]:
+) -> list[RatingVedModel | NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.ZACHET)
     return result
 
@@ -21,7 +24,7 @@ async def zachet(
 async def ekzamen(
     zach_number: str,
     rating_service: RatingService = Depends(get_rating_service),
-) -> list[RatingVedModel]:
+) -> list[RatingVedModel | NotRatingVedModel]:
     result = await rating_service.get_by_ved_type(zach_number, VedType.EKZAMEN)
     return result
 

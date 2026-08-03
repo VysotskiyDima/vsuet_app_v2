@@ -6,27 +6,54 @@
  */
 
 import { $ } from "./utils.js";
-import { clearZach, getZach, savedZach, setZach } from "./store.js";
-import { invalidateSchedule, switchTab } from "./nav.js";
+import { apiGet } from "./api.js";
+import { clearZach, getZach, savedZach, setGroup, setZach } from "./store.js";
+import { switchTab } from "./nav.js";
 import { clearRating, loadRating } from "./view-rating.js";
 import { focusZachInput, resetLoginForm } from "./login.js";
-import { resetSchedule } from "./view-schedule.js";
+import { renderSchedule, resetSchedule } from "./view-schedule.js";
+import { renderSettings } from "./view-settings.js";
+import { forgetSchedule } from "./data/schedule.js";
 
 const viewLogin = $("#view-login");
 const viewApp = $("#view-app");
+const tabSettings = $("#tab-settings");
+const tabSchedule = $("#tab-schedule");
 
 export function openApp(zach) {
   setZach(zach);
   viewLogin.hidden = true;
   viewApp.hidden = false;
-  invalidateSchedule();
   resetSchedule();
+  forgetSchedule();
   switchTab("rating");
   loadRating(zach);
+  loadGroup(zach);
+}
+
+/**
+ * Группа студента — отдельный запрос к беку, не блокирующий показ рейтинга.
+ *
+ * Запрашиваем сразу на входе, а не при открытии настроек: так к моменту, когда
+ * пользователь туда зайдёт, значение уже на месте. Если настройки открыты прямо
+ * сейчас (вход → сразу вкладка), перерисовываем их по приходу ответа.
+ */
+async function loadGroup(zach) {
+  try {
+    const data = await apiGet(`/students/${encodeURIComponent(zach)}/group`);
+    setGroup(data && data.group_name ? data.group_name : null);
+  } catch (_) {
+    // Сеть или бек недоступны — группа останется прочерком, рейтинг это не ломает.
+    setGroup(null);
+  }
+  // Экраны, ждавшие группу, перерисовываем по приходу ответа.
+  if (tabSettings && !tabSettings.hidden) renderSettings();
+  if (tabSchedule && !tabSchedule.hidden) renderSchedule();
 }
 
 export function closeApp() {
   clearZach();
+  forgetSchedule();
   viewApp.hidden = true;
   viewLogin.hidden = false;
   clearRating();

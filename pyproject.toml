@@ -9,10 +9,11 @@ dependencies = [
     "httpx>=0.27.0",
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
-    "redis>=5.0.0",
     "apscheduler>=3.10.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "aiosqlite>=0.20.0",
 ]
 
 [build-system]
@@ -47,6 +48,6 @@ ignore = [
     "RUF001", "RUF002", "RUF003",  # «неоднозначная» кириллица в строках/комментариях
     "RUF012",           # model_config у pydantic не требует ClassVar
     # str+Enum намеренный: record_to_key опирается на .value, а переход на StrEnum
-    # меняет поведение f"{member}" (см. issue про схему ключей Redis).
+    # меняет поведение f"{member}" (см. issue про схему ключей хранилища).
     "UP042",
 ]

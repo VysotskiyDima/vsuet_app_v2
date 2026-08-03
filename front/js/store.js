@@ -9,9 +9,21 @@
 import { STORAGE_KEYS } from "./config.js";
 
 let currentZach = "";
+// Группа приходит с бека отдельным запросом и живёт только в памяти:
+// на диск её не кладём, чтобы после смены группы не показывать устаревшую.
+// undefined — ещё не запрашивали, null — бек ответил, что группы нет.
+let currentGroup;
 
 export function getZach() {
   return currentZach;
+}
+
+export function getGroup() {
+  return currentGroup;
+}
+
+export function setGroup(groupName) {
+  currentGroup = groupName;
 }
 
 /** Запоминает номер и в памяти, и на диске: сессия должна пережить перезагрузку. */
@@ -26,6 +38,7 @@ export function setZach(zach) {
 
 export function clearZach() {
   currentZach = "";
+  currentGroup = undefined;
   try {
     localStorage.removeItem(STORAGE_KEYS.zach);
   } catch (_) {
