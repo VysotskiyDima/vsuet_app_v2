@@ -149,4 +149,6 @@ app.add_middleware(
 app.add_middleware(TracingMiddleware)
 app.include_router(students_router.router)
 app.include_router(rating_router.router)
-Instrumentator().instrument(app).expose(app)
+Instrumentator(
+    should_group_status_codes=False,
+).instrument(app).expose(app)
